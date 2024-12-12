@@ -7,6 +7,19 @@ import {
 import axios from 'axios';
 import { CanvasConfig, Course, Rubric } from './types.js';
 
+// Add this interface near the top of the file, with the other types
+interface RubricStat {
+  id: string;
+  description: string;
+  points_possible: number;
+  total_assessments: number;
+  average_score: number;
+  median_score: number;
+  min_score: number;
+  max_score: number;
+  point_distribution?: { [key: number]: number };
+}
+
 // Handles integration with Canvas LMS through Model Context Protocol
 class CanvasServer {
   private server: Server;
@@ -204,6 +217,55 @@ class CanvasServer {
               required: ["courseId"]
             }
           },
+          {
+            name: "post-submission-comment",
+            description: "Post a comment on a student's assignment submission",
+            inputSchema: {
+              type: "object",
+              properties: {
+                courseId: {
+                  type: "string",
+                  description: "The ID of the course"
+                },
+                assignmentId: {
+                  type: "string", 
+                  description: "The ID of the assignment"
+                },
+                studentId: {
+                  type: "string",
+                  description: "The ID of the student"
+                },
+                comment: {
+                  type: "string",
+                  description: "The comment text to post"
+                }
+              },
+              required: ["courseId", "assignmentId", "studentId", "comment"]
+            }
+          },
+          {
+            name: "get-rubric-statistics",
+            description: "Get statistics for rubric assessments on an assignment",
+            inputSchema: {
+              type: "object",
+              properties: {
+                courseId: {
+                  type: "string",
+                  description: "The ID of the course"
+                },
+                assignmentId: {
+                  type: "string",
+                  description: "The ID of the assignment"
+                },
+                includePointDistribution: {
+                  type: "boolean",
+                  description: "Whether to include point distribution for each criterion",
+                  default: true
+                }
+              },
+              required: ["courseId", "assignmentId"]
+            }
+          },
         ],
       };
     });
@@ -230,6 +292,10 @@ class CanvasServer {
             return await this.handleListSectionSubmissions(args);
           case "list-sections":
             return await this.handleListSections(args);
+          case "post-submission-comment":
+            return await this.handlePostSubmissionComment(args);
+          case "get-rubric-statistics":
+            return await this.handleGetRubricStatistics(args);
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -802,6 +868,227 @@ class CanvasServer {
       }
       throw new Error('Failed to fetch sections: Unknown error');
     }
+  }
+
+  // Posts a comment on a student's assignment submission
+  private async handlePostSubmissionComment(args: any) {
+    const { courseId, assignmentId, studentId, comment } = args;
+
+    try {
+      // Post the comment to the submission
+      await this.axiosInstance.put(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${studentId}/comments`,
+        {
+          comment: {
+            text_comment: comment
+          }
+        }
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Successfully posted comment for student ${studentId} on assignment ${assignmentId}`
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Could not find submission for student ${studentId} on assignment ${assignmentId} in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to post comment: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to post comment: ${error.message}`);
+      }
+      throw new Error('Failed to post comment: Unknown error');
+    }
+  }
+
+  // Handles rubric statistics for an assignment
+  private async handleGetRubricStatistics(args: any) {
+    const { courseId, assignmentId, includePointDistribution = true } = args;
+
+    try {
+      // First get the assignment details with rubric
+      const assignmentResponse = await this.axiosInstance.get(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}`,
+        {
+          params: {
+            include: ['rubric']
+          }
+        }
+      );
+
+      if (!assignmentResponse.data.rubric) {
+        throw new Error('No rubric found for this assignment');
+      }
+
+      // Get all submissions with rubric assessments
+      const submissions = await this.fetchAllPages(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
+        {
+          params: {
+            include: ['rubric_assessment'],
+            per_page: 100
+          }
+        }
+      );
+
+      // Calculate statistics for each rubric criterion
+      const rubricStats = assignmentResponse.data.rubric.map((criterion: any): RubricStat => {
+        const scores = submissions
+          .filter((sub: any) => sub.rubric_assessment?.[criterion.id]?.points !== undefined)
+          .map((sub: any) => sub.rubric_assessment[criterion.id].points);
+
+        const stats: RubricStat = {
+          id: criterion.id,
+          description: criterion.description,
+          points_possible: criterion.points,
+          total_assessments: scores.length,
+          average_score: 0,
+          median_score: 0,
+          min_score: 0,
+          max_score: 0
+        };
+
+        if (scores.length > 0) {
+          stats.average_score = Number((scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(2));
+          stats.median_score = this.calculateMedian(scores);
+          stats.min_score = Math.min(...scores);
+          stats.max_score = Math.max(...scores);
+        }
+
+        if (includePointDistribution) {
+          // Create point distribution
+          const distribution: { [key: number]: number } = {};
+          scores.forEach((score: number) => {
+            distribution[score] = (distribution[score] || 0) + 1;
+          });
+          (stats as any).point_distribution = distribution;
+        }
+
+        return stats;
+      });
+
+      // Calculate overall statistics
+      const totalScores = submissions
+        .filter((sub: any) => sub.rubric_assessment)
+        .map((sub: any) => {
+          return Object.values(sub.rubric_assessment)
+            .reduce((sum: number, assessment: any) => sum + (assessment.points || 0), 0);
+        });
+
+      const overallStats = {
+        total_submissions: submissions.length,
+        submissions_with_assessment: totalScores.length,
+        overall_average: 0,
+        overall_median: 0,
+        overall_min: 0,
+        overall_max: 0
+      };
+
+      if (totalScores.length > 0) {
+        overallStats.overall_average = Number((totalScores.reduce((a, b) => a + b, 0) / totalScores.length).toFixed(2));
+        overallStats.overall_median = this.calculateMedian(totalScores);
+        overallStats.overall_min = Math.min(...totalScores);
+        overallStats.overall_max = Math.max(...totalScores);
+      }
+
+      // Format the output
+      const formattedStats = [
+        'Overall Statistics:',
+        `Total Submissions: ${overallStats.total_submissions}`,
+        `Submissions with Assessment: ${overallStats.submissions_with_assessment}`,
+        `Average Score: ${overallStats.overall_average}`,
+        `Median Score: ${overallStats.overall_median}`,
+        `Min Score: ${overallStats.overall_min}`,
+        `Max Score: ${overallStats.overall_max}`,
+        '\nCriterion Statistics:',
+        ...rubricStats.map((stat: RubricStat) => {
+          const parts = [
+            `\nCriterion: ${stat.description}`,
+            `Points Possible: ${stat.points_possible}`,
+            `Total Assessments: ${stat.total_assessments}`,
+            `Average Score: ${stat.average_score}`,
+            `Median Score: ${stat.median_score}`,
+            `Min Score: ${stat.min_score}`,
+            `Max Score: ${stat.max_score}`
+          ];
+
+          if (includePointDistribution && stat.point_distribution) {
+            parts.push('\nPoint Distribution:');
+            Object.entries(stat.point_distribution)
+              .sort(([a], [b]) => Number(b) - Number(a))
+              .forEach(([score, count]) => {
+                const percentage = (((count as number) / stat.total_assessments) * 100).toFixed(1);
+                parts.push(`  ${score} points: ${count} submissions (${percentage}%)`);
+              });
+          }
+
+          return parts.join('\n');
+        })
+      ].join('\n');
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: formattedStats
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Assignment ${assignmentId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to fetch rubric statistics: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      throw new Error(`Failed to fetch rubric statistics: ${error.message}`);
+    }
+  }
+
+  // Helper method to calculate median
+  private calculateMedian(numbers: number[]): number {
+    if (numbers.length === 0) return 0;
+    
+    const sorted = [...numbers].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+
+    if (sorted.length % 2 === 0) {
+      return Number(((sorted[middle - 1] + sorted[middle]) / 2).toFixed(2));
+    }
+    return Number(sorted[middle].toFixed(2));
+  }
+
+  // Helper method to fetch all pages
+  private async fetchAllPages(url: string, config: any): Promise<any[]> {
+    let results: any[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await this.axiosInstance.get(url, {
+        ...config,
+        params: {
+          ...config.params,
+          page: page
+        }
+      });
+
+      const pageData = response.data;
+      results.push(...pageData);
+
+      hasMore = pageData.length === (config.params.per_page || 10);
+      page += 1;
+    }
+
+    return results;
   }
 
   // Starts the server using stdio transport
