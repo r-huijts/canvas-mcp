@@ -7,6 +7,7 @@ import {
 import axios from 'axios';
 import { CanvasConfig, Course, Rubric } from './types.js';
 
+// Handles integration with Canvas LMS through Model Context Protocol
 class CanvasServer {
   private server: Server;
   private config: CanvasConfig;
@@ -40,6 +41,7 @@ class CanvasServer {
     this.setupRequestHandlers();
   }
 
+  // Configures handlers for available tools and their execution
   private setupRequestHandlers() {
     // List available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -195,6 +197,7 @@ class CanvasServer {
     });
   }
 
+  // Fetches and formats a list of all active courses from Canvas
   private async handleListCourses() {
     try {
       // Get all active courses with pagination
@@ -236,6 +239,7 @@ class CanvasServer {
     }
   }
 
+  // Creates a new announcement in the specified course
   private async handlePostAnnouncement(args: any) {
     const { courseId, title, message } = args;
 
@@ -265,6 +269,7 @@ class CanvasServer {
     }
   }
 
+  // Retrieves all rubrics associated with the specified course
   private async handleListRubrics(args: any) {
     const { courseId } = args;
 
@@ -294,6 +299,7 @@ class CanvasServer {
     }
   }
 
+  // Fetches a complete list of enrolled students for the specified course
   private async handleListStudents(args: any) {
     const { courseId, includeEmail = false } = args;
     const students = [];
@@ -360,6 +366,7 @@ class CanvasServer {
     }
   }
 
+  // Gets all assignments for a course with optional student submission details
   private async handleListAssignments(args: any) {
     const { courseId, studentId, includeSubmissionHistory = false } = args;
     let assignments = [];
@@ -473,6 +480,7 @@ class CanvasServer {
     }
   }
 
+  // Retrieves all student submissions for a specific assignment
   private async handleListAssignmentSubmissions(args: any) {
     const { courseId, assignmentId, includeComments = true } = args;
     let submissions = [];
@@ -564,6 +572,7 @@ class CanvasServer {
     }
   }
 
+  // Starts the server using stdio transport
   public async start() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
