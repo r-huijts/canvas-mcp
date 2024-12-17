@@ -36,7 +36,7 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
    # Create a .env file
    echo "CANVAS_API_TOKEN=your_token_here" > .env
    # Optional: Set custom Canvas URL
-   echo "CANVAS_BASE_URL=https://your-canvas-instance.com" >> .env
+   echo "CANVAS_DOMAIN=https://your-canvas-instance.com" >> .env
    ```
 
 ## Claude Desktop Integration
@@ -64,7 +64,7 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
          ],
          "env": {
            "CANVAS_API_TOKEN": "your_token_here",
-           "CANVAS_BASE_URL": "https://your-canvas-instance.com"
+           "CANVAS_DOMAIN": "https://your-canvas-instance.com"
          }
        }
      }
