@@ -119,6 +119,18 @@ Gets all student submissions for a specific assignment
   - includeComments: boolean (default: true)
 - Returns submission details, grades, and comments
 
+## Available Prompts
+
+### analyze-rubric-statistics
+Analyzes rubric statistics for formative assignments in a course and creates visualizations
+- Required parameters:
+  - courseName: string (The name of the course to analyze)
+- Creates two comprehensive visualizations:
+  1. Grouped stacked bar chart showing score distribution per criterion across all assignments
+  2. Grouped bar chart showing average scores per criterion for all assignments
+- Provides comparative analysis across assignments and criteria
+- Includes progression analysis and trend identification
+
 ## Troubleshooting
 
 ### Common Issues
