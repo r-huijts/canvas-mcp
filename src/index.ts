@@ -1,15 +1,14 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import axios from 'axios';
+import * as dotenv from "dotenv";
 import { CanvasConfig, Course, Rubric } from './types.js';
 
-// Add this interface near the top of the file, with the other types
+// Load environment variables
+dotenv.config();
+
+// Interface for rubric statistics
 interface RubricStat {
   id: string;
   description: string;
@@ -22,384 +21,80 @@ interface RubricStat {
   point_distribution?: { [key: number]: number };
 }
 
-// Handles integration with Canvas LMS through Model Context Protocol
-class CanvasServer {
-  private server: Server;
-  private config: CanvasConfig;
-  private axiosInstance;
+// Create the MCP server
+const server = new McpServer({
+  name: "Canvas MCP Server",
+  version: "1.0.0"
+});
 
-  constructor(config: CanvasConfig) {
-    this.config = config;
-    
-    // Initialize server
-    this.server = new Server(
-      {
-        name: "canvas-mcp",
-        version: "1.0.0",
-      },
-      {
-        capabilities: {
-          tools: {},
-          prompts: {},
-        },
+// Read configuration from environment variables
+const config: CanvasConfig = {
+  apiToken: process.env.CANVAS_API_TOKEN || "",
+  baseUrl: process.env.CANVAS_BASE_URL || "https://fhict.instructure.com",
+};
+
+// Validate configuration
+if (!config.apiToken) {
+  console.error("Error: CANVAS_API_TOKEN environment variable is required");
+  process.exit(1);
+}
+
+// Initialize axios instance with base configuration
+const axiosInstance = axios.create({
+  baseURL: config.baseUrl,
+  headers: {
+    Authorization: `Bearer ${config.apiToken}`,
+  },
+});
+
+// Helper method to calculate median
+function calculateMedian(numbers: number[]): number {
+  if (numbers.length === 0) return 0;
+  
+  const sorted = [...numbers].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 0) {
+    return Number(((sorted[middle - 1] + sorted[middle]) / 2).toFixed(2));
+  }
+  return Number(sorted[middle].toFixed(2));
+}
+
+// Helper method to fetch all pages
+async function fetchAllPages(url: string, config: any): Promise<any[]> {
+  let results: any[] = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await axiosInstance.get(url, {
+      ...config,
+      params: {
+        ...config.params,
+        page: page
       }
-    );
-
-    // Initialize axios instance with base configuration
-    this.axiosInstance = axios.create({
-      baseURL: this.config.baseUrl,
-      headers: {
-        Authorization: `Bearer ${this.config.apiToken}`,
-      },
     });
 
-    // Set up request handlers
-    this.setupRequestHandlers();
+    const pageData = response.data;
+    results.push(...pageData);
+
+    hasMore = pageData.length === (config.params.per_page || 10);
+    page += 1;
   }
 
-  // Configures handlers for available tools and their execution
-  private setupRequestHandlers() {
-    // List available tools
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: [
-          {
-            name: "list-courses",
-            description: "List all courses for the authenticated user",
-            inputSchema: {
-              type: "object",
-              properties: {},
-              required: [],
-            },
-          },
-          {
-            name: "post-announcement",
-            description: "Post an announcement to a specific course",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course",
-                },
-                title: {
-                  type: "string",
-                  description: "The title of the announcement",
-                },
-                message: {
-                  type: "string",
-                  description: "The content of the announcement",
-                },
-              },
-              required: ["courseId", "title", "message"],
-            },
-          },
-          {
-            name: "list-rubrics",
-            description: "List all rubrics for a specific course",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course",
-                },
-              },
-              required: ["courseId"],
-            },
-          },
-          {
-            name: "list-students",
-            description: "Get a complete list of all students enrolled in a specific course",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course",
-                },
-                includeEmail: {
-                  type: "boolean",
-                  description: "Whether to include student email addresses",
-                  default: false
-                }
-              },
-              required: ["courseId"],
-            },
-          },
-          {
-            name: "list-assignments",
-            description: "Get a list of all assignments in a course with submission status for students",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course"
-                },
-                studentId: {
-                  type: "string",
-                  description: "Optional: Get submission status for a specific student",
-                  required: false
-                },
-                includeSubmissionHistory: {
-                  type: "boolean",
-                  description: "Whether to include submission history details",
-                  default: false
-                }
-              },
-              required: ["courseId"]
-            }
-          },
-          {
-            name: "list-assignment-submissions",
-            description: "Get all student submissions and comments for a specific assignment",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course"
-                },
-                assignmentId: {
-                  type: "string",
-                  description: "The ID of the assignment"
-                },
-                includeComments: {
-                  type: "boolean",
-                  description: "Whether to include submission comments",
-                  default: true
-                }
-              },
-              required: ["courseId", "assignmentId"]
-            }
-          },
-          {
-            name: "list-section-submissions",
-            description: "Get all student submissions for a specific assignment filtered by section",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course"
-                },
-                assignmentId: {
-                  type: "string",
-                  description: "The ID of the assignment"
-                },
-                sectionId: {
-                  type: "string",
-                  description: "The ID of the section"
-                },
-                includeComments: {
-                  type: "boolean",
-                  description: "Whether to include submission comments",
-                  default: true
-                }
-              },
-              required: ["courseId", "assignmentId", "sectionId"]
-            }
-          },
-          {
-            name: "list-sections",
-            description: "Get a list of all sections in a course",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course"
-                },
-                includeStudentCount: {
-                  type: "boolean",
-                  description: "Whether to include the number of students in each section",
-                  default: false
-                }
-              },
-              required: ["courseId"]
-            }
-          },
-          {
-            name: "post-submission-comment",
-            description: "Post a comment on a student's assignment submission",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course"
-                },
-                assignmentId: {
-                  type: "string", 
-                  description: "The ID of the assignment"
-                },
-                studentId: {
-                  type: "string",
-                  description: "The ID of the student"
-                },
-                comment: {
-                  type: "string",
-                  description: "The comment text to post"
-                }
-              },
-              required: ["courseId", "assignmentId", "studentId", "comment"]
-            }
-          },
-          {
-            name: "get-rubric-statistics",
-            description: "Get statistics for rubric assessments on an assignment",
-            inputSchema: {
-              type: "object",
-              properties: {
-                courseId: {
-                  type: "string",
-                  description: "The ID of the course"
-                },
-                assignmentId: {
-                  type: "string",
-                  description: "The ID of the assignment"
-                },
-                includePointDistribution: {
-                  type: "boolean",
-                  description: "Whether to include point distribution for each criterion",
-                  default: true
-                }
-              },
-              required: ["courseId", "assignmentId"]
-            }
-          },
-        ],
-      };
-    });
+  return results;
+}
 
-    // Handle tool execution
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-
-      try {
-        switch (name) {
-          case "list-courses":
-            return await this.handleListCourses();
-          case "post-announcement":
-            return await this.handlePostAnnouncement(args);
-          case "list-rubrics":
-            return await this.handleListRubrics(args);
-          case "list-students":
-            return await this.handleListStudents(args);
-          case "list-assignments":
-            return await this.handleListAssignments(args);
-          case "list-assignment-submissions":
-            return await this.handleListAssignmentSubmissions(args);
-          case "list-section-submissions":
-            return await this.handleListSectionSubmissions(args);
-          case "list-sections":
-            return await this.handleListSections(args);
-          case "post-submission-comment":
-            return await this.handlePostSubmissionComment(args);
-          case "get-rubric-statistics":
-            return await this.handleGetRubricStatistics(args);
-          default:
-            throw new Error(`Unknown tool: ${name}`);
-        }
-      } catch (error: any) {
-        console.error('Error executing tool:', error);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Error: ${error.message}`,
-            },
-          ],
-        };
-      }
-    });
-
-    // Add these handlers for prompts
-    this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
-      return {
-        prompts: [
-          {
-            name: "analyze-rubric-statistics",
-            description: "Analyze rubric statistics for formative assignments in a course",
-            arguments: [
-              {
-                name: "courseName",
-                description: "The name of the course to analyze",
-                required: true
-              }
-            ]
-          }
-        ]
-      };
-    });
-
-    this.server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-      if (request.params.name === "analyze-rubric-statistics") {
-        const courseName = request.params.arguments?.courseName;
-        const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-        
-        return {
-          messages: [
-            {
-              role: "user",
-              content: {
-                type: "text",
-                text: `Please analyze the rubric statistics for the course "${courseName}". Follow these steps:
-
-1. First, use the list-courses tool to find the course ID for "${courseName}".
-
-2. Then, use the list-assignments tool to get all assignments for this course.
-
-3. For each formative assignment that has a due date before ${today}:
-   - Use the get-rubric-statistics tool to get detailed statistics
-   - Include the point distribution to create visualizations
-   - Skip assignments with future due dates (after ${today})
-
-4. Create and analyze two comprehensive visualizations that show all assignments together:
-   a) Grouped Stacked Bar Chart:
-      - X-axis: Criteria names
-      - Y-axis: Percentage of students
-      - Groups: One group of stacked bars per assignment
-      - Bars: Stacked to show score distribution (0-4 points)
-      - Colors: Consistent colors across assignments for each point value
-      - Legend: Include both assignment names and point values
-      
-   b) Grouped Bar Chart:
-      - X-axis: Criteria names
-      - Y-axis: Average score
-      - Groups: One bar per assignment for each criterion
-      - Colors: Different color for each assignment
-      - Include error bars showing standard deviation if available
-
-5. Provide a summary of key insights based on:
-   - Score distributions across criteria and assignments
-   - Progression or patterns between assignments
-   - Common areas of strength or difficulty across assignments
-   - Notable trends or changes between assignments
-   - Specific criteria that show consistent or varying performance
-
-Please ensure all visualizations are clearly labeled with:
-- Descriptive title (including analysis date: ${today})
-- Axis labels
-- Legend showing assignments and score levels
-- Clear distinction between assignments
-- Percentage or count indicators where appropriate`
-              }
-            }
-          ]
-        };
-      }
-      
-      throw new Error(`Unknown prompt: ${request.params.name}`);
-    });
-  }
-
-  // Fetches and formats a list of all active courses from Canvas
-  private async handleListCourses() {
+// Register tools using the new tool registration pattern
+// Tool: list-courses
+server.tool(
+  "list-courses",
+  "List all courses for the authenticated user",
+  {},
+  async () => {
     try {
       // Get all active courses with pagination
-      const response = await this.axiosInstance.get('/api/v1/courses', {
+      const response = await axiosInstance.get('/api/v1/courses', {
         params: {
           enrollment_state: 'active', // Only get active enrollments
           state: ['available'], // Only get available courses
@@ -436,13 +131,20 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to fetch courses: Unknown error');
     }
   }
+);
 
-  // Creates a new announcement in the specified course
-  private async handlePostAnnouncement(args: any) {
-    const { courseId, title, message } = args;
-
+// Tool: post-announcement
+server.tool(
+  "post-announcement",
+  "Post an announcement to a specific course",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    title: z.string().describe("The title of the announcement"),
+    message: z.string().describe("The content of the announcement")
+  },
+  async ({ courseId, title, message }) => {
     try {
-      await this.axiosInstance.post(
+      await axiosInstance.post(
         `/api/v1/courses/${courseId}/discussion_topics`,
         {
           title,
@@ -466,13 +168,18 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to post announcement: Unknown error');
     }
   }
+);
 
-  // Retrieves all rubrics associated with the specified course
-  private async handleListRubrics(args: any) {
-    const { courseId } = args;
-
+// Tool: list-rubrics
+server.tool(
+  "list-rubrics",
+  "List all rubrics for a specific course",
+  {
+    courseId: z.string().describe("The ID of the course")
+  },
+  async ({ courseId }) => {
     try {
-      const response = await this.axiosInstance.get(
+      const response = await axiosInstance.get(
         `/api/v1/courses/${courseId}/rubrics`
       );
       const rubrics: Rubric[] = response.data;
@@ -496,10 +203,17 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to fetch rubrics: Unknown error');
     }
   }
+);
 
-  // Fetches a complete list of enrolled students for the specified course
-  private async handleListStudents(args: any) {
-    const { courseId, includeEmail = false } = args;
+// Tool: list-students
+server.tool(
+  "list-students",
+  "Get a complete list of all students enrolled in a specific course",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    includeEmail: z.boolean().default(false).describe("Whether to include student email addresses")
+  },
+  async ({ courseId, includeEmail }) => {
     const students = [];
     let page = 1;
     let hasMore = true;
@@ -507,7 +221,7 @@ Please ensure all visualizations are clearly labeled with:
     try {
       // Fetch all pages of students
       while (hasMore) {
-        const response = await this.axiosInstance.get(
+        const response = await axiosInstance.get(
           `/api/v1/courses/${courseId}/users`,
           {
             params: {
@@ -563,10 +277,18 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to fetch students: Unknown error');
     }
   }
+);
 
-  // Gets all assignments for a course with optional student submission details
-  private async handleListAssignments(args: any) {
-    const { courseId, studentId, includeSubmissionHistory = false } = args;
+// Tool: list-assignments
+server.tool(
+  "list-assignments",
+  "Get a list of all assignments in a course with submission status for students",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    studentId: z.string().optional().describe("Optional: Get submission status for a specific student"),
+    includeSubmissionHistory: z.boolean().default(false).describe("Whether to include submission history details")
+  },
+  async ({ courseId, studentId, includeSubmissionHistory = false }) => {
     let assignments = [];
     let page = 1;
     let hasMore = true;
@@ -574,7 +296,7 @@ Please ensure all visualizations are clearly labeled with:
     try {
       // Fetch all pages of assignments with submission and comment data
       while (hasMore) {
-        const response = await this.axiosInstance.get(
+        const response = await axiosInstance.get(
           `/api/v1/courses/${courseId}/assignments`,
           {
             params: {
@@ -625,36 +347,36 @@ Please ensure all visualizations are clearly labeled with:
                   const date = new Date(comment.created_at).toLocaleString();
                   parts.push(`    [${date}] ${comment.comment}`);
                 });
+            } else {
+              parts.push('  Teacher Comments: None');
+            }
+
+            // Enhanced submission history handling
+            if (includeSubmissionHistory && assignment.submission.versioned_submissions?.length > 0) {
+              parts.push('  Submission History:');
+              assignment.submission.versioned_submissions
+                .sort((a: any, b: any) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime())
+                .forEach((version: any, index: number) => {
+                  const date = new Date(version.submitted_at).toLocaleString();
+                  parts.push(`    Attempt ${index + 1} [${date}]:`);
+                  if (version.score !== undefined) {
+                    parts.push(`      Score: ${version.score}`);
+                  }
+                  if (version.grade) {
+                    parts.push(`      Grade: ${version.grade}`);
+                  }
+                  if (version.submission_type) {
+                    parts.push(`      Type: ${version.submission_type}`);
+                  }
+                });
+            }
           } else {
-            parts.push('  Teacher Comments: None');
+            parts.push('Submission: No submission data available');
           }
 
-          // Enhanced submission history handling
-          if (includeSubmissionHistory && assignment.submission.versioned_submissions?.length > 0) {
-            parts.push('  Submission History:');
-            assignment.submission.versioned_submissions
-              .sort((a: any, b: any) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime())
-              .forEach((version: any, index: number) => {
-                const date = new Date(version.submitted_at).toLocaleString();
-                parts.push(`    Attempt ${index + 1} [${date}]:`);
-                if (version.score !== undefined) {
-                  parts.push(`      Score: ${version.score}`);
-                }
-                if (version.grade) {
-                  parts.push(`      Grade: ${version.grade}`);
-                }
-                if (version.submission_type) {
-                  parts.push(`      Type: ${version.submission_type}`);
-                }
-              });
-          }
-        } else {
-          parts.push('Submission: No submission data available');
-        }
-
-        return parts.join('\n');
-      })
-      .join('\n---\n');
+          return parts.join('\n');
+        })
+        .join('\n---\n');
 
       return {
         content: [
@@ -677,17 +399,25 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to fetch assignments: Unknown error');
     }
   }
+);
 
-  // Retrieves all student submissions for a specific assignment
-  private async handleListAssignmentSubmissions(args: any) {
-    const { courseId, assignmentId, includeComments = true } = args;
+// Tool: list-assignment-submissions
+server.tool(
+  "list-assignment-submissions",
+  "Get all student submissions and comments for a specific assignment",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment"),
+    includeComments: z.boolean().default(true).describe("Whether to include submission comments")
+  },
+  async ({ courseId, assignmentId, includeComments = true }) => {
     let submissions = [];
     let page = 1;
     let hasMore = true;
 
     try {
       while (hasMore) {
-        const response = await this.axiosInstance.get(
+        const response = await axiosInstance.get(
           `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
           {
             params: {
@@ -769,23 +499,32 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to fetch submissions: Unknown error');
     }
   }
+);
 
-  // Retrieves all student submissions for a specific assignment filtered by section
-  private async handleListSectionSubmissions(args: any) {
-    const { courseId, assignmentId, sectionId, includeComments = true } = args;
+// Tool: list-section-submissions
+server.tool(
+  "list-section-submissions",
+  "Get all student submissions for a specific assignment filtered by section",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment"),
+    sectionId: z.string().describe("The ID of the section"),
+    includeComments: z.boolean().default(true).describe("Whether to include submission comments")
+  },
+  async ({ courseId, assignmentId, sectionId, includeComments = true }) => {
     let submissions = [];
     let page = 1;
     let hasMore = true;
 
     try {
       // First verify the section exists in the course
-      await this.axiosInstance.get(
+      await axiosInstance.get(
         `/api/v1/courses/${courseId}/sections/${sectionId}`
       );
 
       // Fetch submissions for the section
       while (hasMore) {
-        const response = await this.axiosInstance.get(
+        const response = await axiosInstance.get(
           `/api/v1/sections/${sectionId}/assignments/${assignmentId}/submissions`,
           {
             params: {
@@ -870,10 +609,17 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to fetch section submissions: Unknown error');
     }
   }
+);
 
-  // Retrieves all student submissions for a specific assignment filtered by section
-  private async handleListSections(args: any) {
-    const { courseId, includeStudentCount = false } = args;
+// Tool: list-sections
+server.tool(
+  "list-sections",
+  "Get a list of all sections in a course",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    includeStudentCount: z.boolean().default(false).describe("Whether to include the number of students in each section")
+  },
+  async ({ courseId, includeStudentCount = false }) => {
     let sections = [];
     let page = 1;
     let hasMore = true;
@@ -881,7 +627,7 @@ Please ensure all visualizations are clearly labeled with:
     try {
       // Fetch all pages of sections
       while (hasMore) {
-        const response = await this.axiosInstance.get(
+        const response = await axiosInstance.get(
           `/api/v1/courses/${courseId}/sections`,
           {
             params: {
@@ -951,14 +697,22 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to fetch sections: Unknown error');
     }
   }
+);
 
-  // Posts a comment on a student's assignment submission
-  private async handlePostSubmissionComment(args: any) {
-    const { courseId, assignmentId, studentId, comment } = args;
-
+// Tool: post-submission-comment
+server.tool(
+  "post-submission-comment",
+  "Post a comment on a student's assignment submission",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment"),
+    studentId: z.string().describe("The ID of the student"),
+    comment: z.string().describe("The comment text to post")
+  },
+  async ({ courseId, assignmentId, studentId, comment }) => {
     try {
       // Post the comment to the submission
-      await this.axiosInstance.put(
+      await axiosInstance.put(
         `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${studentId}/comments`,
         {
           comment: {
@@ -989,14 +743,21 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error('Failed to post comment: Unknown error');
     }
   }
+);
 
-  // Handles rubric statistics for an assignment
-  private async handleGetRubricStatistics(args: any) {
-    const { courseId, assignmentId, includePointDistribution = true } = args;
-
+// Tool: get-rubric-statistics
+server.tool(
+  "get-rubric-statistics",
+  "Get statistics for rubric assessments on an assignment",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment"),
+    includePointDistribution: z.boolean().default(true).describe("Whether to include point distribution for each criterion")
+  },
+  async ({ courseId, assignmentId, includePointDistribution = true }) => {
     try {
       // First get the assignment details with rubric
-      const assignmentResponse = await this.axiosInstance.get(
+      const assignmentResponse = await axiosInstance.get(
         `/api/v1/courses/${courseId}/assignments/${assignmentId}`,
         {
           params: {
@@ -1010,7 +771,7 @@ Please ensure all visualizations are clearly labeled with:
       }
 
       // Get all submissions with rubric assessments
-      const submissions = await this.fetchAllPages(
+      const submissions = await fetchAllPages(
         `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
         {
           params: {
@@ -1039,7 +800,7 @@ Please ensure all visualizations are clearly labeled with:
 
         if (scores.length > 0) {
           stats.average_score = Number((scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(2));
-          stats.median_score = this.calculateMedian(scores);
+          stats.median_score = calculateMedian(scores);
           stats.min_score = Math.min(...scores);
           stats.max_score = Math.max(...scores);
         }
@@ -1050,7 +811,7 @@ Please ensure all visualizations are clearly labeled with:
           scores.forEach((score: number) => {
             distribution[score] = (distribution[score] || 0) + 1;
           });
-          (stats as any).point_distribution = distribution;
+          stats.point_distribution = distribution;
         }
 
         return stats;
@@ -1075,7 +836,7 @@ Please ensure all visualizations are clearly labeled with:
 
       if (totalScores.length > 0) {
         overallStats.overall_average = Number((totalScores.reduce((a, b) => a + b, 0) / totalScores.length).toFixed(2));
-        overallStats.overall_median = this.calculateMedian(totalScores);
+        overallStats.overall_median = calculateMedian(totalScores);
         overallStats.overall_min = Math.min(...totalScores);
         overallStats.overall_max = Math.max(...totalScores);
       }
@@ -1134,68 +895,82 @@ Please ensure all visualizations are clearly labeled with:
       throw new Error(`Failed to fetch rubric statistics: ${error.message}`);
     }
   }
+);
 
-  // Helper method to calculate median
-  private calculateMedian(numbers: number[]): number {
-    if (numbers.length === 0) return 0;
+// Register the prompt for analyzing rubric statistics
+server.prompt(
+  "analyze-rubric-statistics",
+  "Analyze rubric statistics for formative assignments in a course",
+  {
+    courseName: z.string().describe("The name of the course to analyze")
+  },
+  ({ courseName }) => {
+    const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     
-    const sorted = [...numbers].sort((a, b) => a - b);
-    const middle = Math.floor(sorted.length / 2);
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Please analyze the rubric statistics for the course "${courseName}". Follow these steps:
 
-    if (sorted.length % 2 === 0) {
-      return Number(((sorted[middle - 1] + sorted[middle]) / 2).toFixed(2));
-    }
-    return Number(sorted[middle].toFixed(2));
-  }
+1. First, use the list-courses tool to find the course ID for "${courseName}".
 
-  // Helper method to fetch all pages
-  private async fetchAllPages(url: string, config: any): Promise<any[]> {
-    let results: any[] = [];
-    let page = 1;
-    let hasMore = true;
+2. Then, use the list-assignments tool to get all assignments for this course.
 
-    while (hasMore) {
-      const response = await this.axiosInstance.get(url, {
-        ...config,
-        params: {
-          ...config.params,
-          page: page
+3. For each formative assignment that has a due date before ${today}:
+   - Use the get-rubric-statistics tool to get detailed statistics
+   - Include the point distribution to create visualizations
+   - Skip assignments with future due dates (after ${today})
+
+4. Create and analyze two comprehensive visualizations that show all assignments together:
+   a) Grouped Stacked Bar Chart:
+      - X-axis: Criteria names
+      - Y-axis: Percentage of students
+      - Groups: One group of stacked bars per assignment
+      - Bars: Stacked to show score distribution (0-4 points)
+      - Colors: Consistent colors across assignments for each point value
+      - Legend: Include both assignment names and point values
+      
+   b) Grouped Bar Chart:
+      - X-axis: Criteria names
+      - Y-axis: Average score
+      - Groups: One bar per assignment for each criterion
+      - Colors: Different color for each assignment
+      - Include error bars showing standard deviation if available
+
+5. Provide a summary of key insights based on:
+   - Score distributions across criteria and assignments
+   - Progression or patterns between assignments
+   - Common areas of strength or difficulty across assignments
+   - Notable trends or changes between assignments
+   - Specific criteria that show consistent or varying performance
+
+Please ensure all visualizations are clearly labeled with:
+- Descriptive title (including analysis date: ${today})
+- Axis labels
+- Legend showing assignments and score levels
+- Clear distinction between assignments
+- Percentage or count indicators where appropriate`
+          }
         }
-      });
-
-      const pageData = response.data;
-      results.push(...pageData);
-
-      hasMore = pageData.length === (config.params.per_page || 10);
-      page += 1;
-    }
-
-    return results;
+      ]
+    };
   }
-
-  // Starts the server using stdio transport
-  public async start() {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    console.error("Canvas MCP Server running on stdio");
-  }
-}
-
-// Read configuration from environment variables
-const config: CanvasConfig = {
-  apiToken: process.env.CANVAS_API_TOKEN || "",
-  baseUrl: process.env.CANVAS_BASE_URL || "https://fhict.instructure.com",
-};
-
-// Validate configuration
-if (!config.apiToken) {
-  console.error("Error: CANVAS_API_TOKEN environment variable is required");
-  process.exit(1);
-}
+);
 
 // Start the server
-const server = new CanvasServer(config);
-server.start().catch((error) => {
-  console.error("Fatal error:", error);
-  process.exit(1);
-});
+async function startServer() {
+  try {
+    console.error("Starting Canvas MCP Server...");
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error("Canvas MCP Server running on stdio");
+  } catch (error) {
+    console.error("Fatal error:", error);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -10,6 +10,7 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
 - Get student enrollment information
 - Access assignment details and submissions
 - View student submission history and comments
+- Analyze rubric statistics
 
 ## Prerequisites
 
@@ -26,17 +27,20 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
    npm install
    ```
 
-2. Build the TypeScript project:
+2. Create a `.env` file in the project root:
+   ```
+   CANVAS_API_TOKEN=your_canvas_api_token_here
+   CANVAS_BASE_URL=https://your-canvas-instance.instructure.com
+   ```
+
+3. Build the TypeScript project:
    ```bash
    npm run build
    ```
 
-3. Configure your environment variables:
+4. Start the server:
    ```bash
-   # Create a .env file
-   echo "CANVAS_API_TOKEN=your_token_here" > .env
-   # Optional: Set custom Canvas URL
-   echo "CANVAS_DOMAIN=https://your-canvas-instance.com" >> .env
+   npm start
    ```
 
 ## Claude Desktop Integration
@@ -64,7 +68,7 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
          ],
          "env": {
            "CANVAS_API_TOKEN": "your_token_here",
-           "CANVAS_DOMAIN": "https://your-canvas-instance.com"
+           "CANVAS_BASE_URL": "https://your-canvas-instance.com"
          }
        }
      }
@@ -119,6 +123,42 @@ Gets all student submissions for a specific assignment
   - includeComments: boolean (default: true)
 - Returns submission details, grades, and comments
 
+### list-section-submissions
+Gets all student submissions for a specific assignment filtered by section
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+  - sectionId: string
+- Optional parameters:
+  - includeComments: boolean (default: true)
+- Returns submission details filtered by the specified section
+
+### list-sections
+Gets a list of all sections in a course
+- Required parameters:
+  - courseId: string
+- Optional parameters:
+  - includeStudentCount: boolean (default: false)
+- Returns section details with optional student count
+
+### post-submission-comment
+Posts a comment on a student's assignment submission
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+  - studentId: string
+  - comment: string
+- Returns confirmation of the posted comment
+
+### get-rubric-statistics
+Gets statistics for rubric assessments on an assignment
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+- Optional parameters:
+  - includePointDistribution: boolean (default: true)
+- Returns detailed statistics about rubric assessment criteria
+
 ## Available Prompts
 
 ### analyze-rubric-statistics
@@ -156,6 +196,36 @@ Analyzes rubric statistics for formative assignments in a course and creates vis
 The server logs errors to stderr. These can be viewed in Claude Desktop's logs or redirected when running manually:
 ```bash
 node build/index.js 2> debug.log
+```
+
+## Development
+
+This MCP server uses the latest Model Context Protocol TypeScript SDK (v1.11.3+) with the new tool registration pattern. Each tool is registered with the server using the `server.tool()` method, which takes the following parameters:
+
+1. Tool name (string)
+2. Tool description (string)
+3. Input schema (Zod schema or plain object)
+4. Execute function (async function that implements the tool logic)
+
+Here's an example of how a tool is registered:
+
+```typescript
+server.tool(
+  "list-courses",
+  "List all courses for the authenticated user",
+  {},
+  async () => {
+    // Tool implementation...
+    return {
+      content: [
+        {
+          type: "text",
+          text: "Tool response..."
+        }
+      ]
+    };
+  }
+);
 ```
 
 ## Security Notes
