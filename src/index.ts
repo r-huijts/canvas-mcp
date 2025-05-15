@@ -404,99 +404,201 @@ server.tool(
 // Tool: list-assignment-submissions
 server.tool(
   "list-assignment-submissions",
-  "Get all student submissions and comments for a specific assignment",
+  "Fetch every student's submission status & comments for an assignment.",
   {
     courseId: z.string().describe("The ID of the course"),
-    assignmentId: z.string().describe("The ID of the assignment"),
-    includeComments: z.boolean().default(true).describe("Whether to include submission comments")
+    assignmentId: z.string().describe("The ID of the assignment")
   },
-  async ({ courseId, assignmentId, includeComments = true }) => {
-    let submissions = [];
-    let page = 1;
-    let hasMore = true;
-
+  async ({ courseId, assignmentId }) => {
     try {
-      while (hasMore) {
-        const response = await axiosInstance.get(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
-          {
-            params: {
-              per_page: 100,
-              page: page,
-              include: [
-                'user',  // Include user information
-                'submission_comments', // Include comments
-                'assignment' // Include assignment details
-              ]
-            }
-          }
-        );
-
-        const pageSubmissions = response.data;
-        submissions.push(...pageSubmissions);
-
-        hasMore = pageSubmissions.length === 100;
-        page += 1;
-      }
-
-      // Format the submissions list
-      const formattedSubmissions = submissions
-        .map(submission => {
-          const parts = [
-            `Student: ${submission.user?.name || 'Unknown'}`,
-            `Status: ${submission.workflow_state}`,
-            `Submitted: ${submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Not submitted'}`,
-            `Grade: ${submission.grade || 'No grade'}`,
-            `Score: ${submission.score !== undefined ? submission.score : 'No score'}`
-          ];
-
-          if (submission.late) {
-            parts.push('Late: Yes');
-          }
-
-          if (submission.missing) {
-            parts.push('Missing: Yes');
-          }
-
-          if (submission.submission_type) {
-            parts.push(`Submission Type: ${submission.submission_type}`);
-          }
-
-          // Add submission comments if requested
-          if (includeComments && submission.submission_comments?.length > 0) {
-            parts.push('\nComments:');
-            submission.submission_comments.forEach((comment: any) => {
-              const date = new Date(comment.created_at).toLocaleString();
-              const author = comment.author?.display_name || 'Unknown';
-              const role = comment.author?.role || 'unknown role';
-              parts.push(`  [${date}] ${author} (${role}):`);
-              parts.push(`    ${comment.comment}`);
-            });
-          }
-
-          return parts.join('\n');
-        })
-        .join('\n---\n');
-
+      const response = await axiosInstance.get(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`
+      );
       return {
         content: [
           {
             type: "text",
-            text: submissions.length > 0
-              ? `Submissions for assignment ${assignmentId} in course ${courseId}:\n\n${formattedSubmissions}\n\nTotal submissions: ${submissions.length}`
-              : "No submissions found for this assignment.",
-          },
-        ],
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
       };
     } catch (error: any) {
       console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Assignment ${assignmentId} not found in course ${courseId}`);
+      }
       if (error.response?.data?.errors) {
-        throw new Error(`Failed to fetch submissions: ${JSON.stringify(error.response.data.errors)}`);
+        throw new Error(`Failed to fetch assignment submissions: ${JSON.stringify(error.response.data.errors)}`);
       }
       if (error instanceof Error) {
-        throw new Error(`Failed to fetch submissions: ${error.message}`);
+        throw new Error(`Failed to fetch assignment submissions: ${error.message}`);
       }
-      throw new Error('Failed to fetch submissions: Unknown error');
+      throw new Error('Failed to fetch assignment submissions: Unknown error');
+    }
+  }
+);
+
+// Tool: grade-submission
+server.tool(
+  "grade-submission",
+  "Write back a score, grade, rubric points, or comment for a student's submission.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment"),
+    userId: z.string().describe("The ID of the student/user"),
+    // All grading fields optional
+    posted_grade: z.string().optional(),
+    score: z.number().optional(),
+    rubric_assessment: z.any().optional(),
+    comment: z.string().optional()
+  },
+  async ({ courseId, assignmentId, userId, posted_grade, score, rubric_assessment, comment }) => {
+    try {
+      const payload: any = {};
+      if (posted_grade !== undefined) payload.posted_grade = posted_grade;
+      if (score !== undefined) payload.score = score;
+      if (rubric_assessment !== undefined) payload.rubric_assessment = rubric_assessment;
+      if (comment !== undefined) payload.comment = { text_comment: comment };
+      const response = await axiosInstance.put(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}`,
+        payload
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Submission for user ${userId} on assignment ${assignmentId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to grade submission: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to grade submission: ${error.message}`);
+      }
+      throw new Error('Failed to grade submission: Unknown error');
+    }
+  }
+);
+
+// Tool: post-submission-comment
+server.tool(
+  "post-submission-comment",
+  "Attach targeted feedback as a comment on a student's submission.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment"),
+    userId: z.string().describe("The ID of the student/user"),
+    comment: z.string().describe("The comment text to post")
+  },
+  async ({ courseId, assignmentId, userId, comment }) => {
+    try {
+      const response = await axiosInstance.put(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}/comments`,
+        { comment: { text_comment: comment } }
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Submission for user ${userId} on assignment ${assignmentId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to post submission comment: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to post submission comment: ${error.message}`);
+      }
+      throw new Error('Failed to post submission comment: Unknown error');
+    }
+  }
+);
+
+// Tool: attach-rubric-to-assignment
+server.tool(
+  "attach-rubric-to-assignment",
+  "Attach a rubric to an assignment.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment"),
+    rubricId: z.string().describe("The ID of the rubric to attach")
+  },
+  async ({ courseId, assignmentId, rubricId }) => {
+    try {
+      const response = await axiosInstance.put(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}?rubric_id=${encodeURIComponent(rubricId)}`
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Assignment ${assignmentId} or rubric ${rubricId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to attach rubric: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to attach rubric: ${error.message}`);
+      }
+      throw new Error('Failed to attach rubric: Unknown error');
+    }
+  }
+);
+
+// Tool: list-rubric-assessments
+server.tool(
+  "list-rubric-assessments",
+  "List all rubric assessments for an assignment.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment")
+  },
+  async ({ courseId, assignmentId }) => {
+    try {
+      const response = await axiosInstance.get(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
+        { params: { 'include[]': 'rubric_assessment' } }
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Assignment ${assignmentId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to fetch rubric assessments: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch rubric assessments: ${error.message}`);
+      }
+      throw new Error('Failed to fetch rubric assessments: Unknown error');
     }
   }
 );
@@ -695,52 +797,6 @@ server.tool(
         throw new Error(`Failed to fetch sections: ${error.message}`);
       }
       throw new Error('Failed to fetch sections: Unknown error');
-    }
-  }
-);
-
-// Tool: post-submission-comment
-server.tool(
-  "post-submission-comment",
-  "Post a comment on a student's assignment submission",
-  {
-    courseId: z.string().describe("The ID of the course"),
-    assignmentId: z.string().describe("The ID of the assignment"),
-    studentId: z.string().describe("The ID of the student"),
-    comment: z.string().describe("The comment text to post")
-  },
-  async ({ courseId, assignmentId, studentId, comment }) => {
-    try {
-      // Post the comment to the submission
-      await axiosInstance.put(
-        `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${studentId}/comments`,
-        {
-          comment: {
-            text_comment: comment
-          }
-        }
-      );
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Successfully posted comment for student ${studentId} on assignment ${assignmentId}`
-          }
-        ]
-      };
-    } catch (error: any) {
-      console.error('Full error details:', error.response?.data || error);
-      if (error.response?.status === 404) {
-        throw new Error(`Could not find submission for student ${studentId} on assignment ${assignmentId} in course ${courseId}`);
-      }
-      if (error.response?.data?.errors) {
-        throw new Error(`Failed to post comment: ${JSON.stringify(error.response.data.errors)}`);
-      }
-      if (error instanceof Error) {
-        throw new Error(`Failed to post comment: ${error.message}`);
-      }
-      throw new Error('Failed to post comment: Unknown error');
     }
   }
 );
@@ -1376,6 +1432,291 @@ server.tool(
         throw new Error(`Failed to revert page revision: ${error.message}`);
       }
       throw new Error('Failed to revert page revision: Unknown error');
+    }
+  }
+);
+
+// Tool: get-assignment
+server.tool(
+  "get-assignment",
+  "Fetch metadata for a single assignment (due date, points, rubric, submission types, etc).",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment")
+  },
+  async ({ courseId, assignmentId }) => {
+    try {
+      const response = await axiosInstance.get(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}`
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Assignment ${assignmentId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to fetch assignment: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch assignment: ${error.message}`);
+      }
+      throw new Error('Failed to fetch assignment: Unknown error');
+    }
+  }
+);
+
+// Tool: create-assignment
+server.tool(
+  "create-assignment",
+  "Create a new assignment in a course. All fields are optional except courseId.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    // All Canvas assignment fields as optional
+    name: z.string().optional(),
+    description: z.string().optional(),
+    due_at: z.string().optional(),
+    points_possible: z.number().optional(),
+    submission_types: z.array(z.string()).optional(),
+    published: z.boolean().optional(),
+    grading_type: z.string().optional(),
+    assignment_group_id: z.number().optional(),
+    // ...add more fields as needed
+  },
+  async (args) => {
+    const { courseId, ...fields } = args;
+    try {
+      const response = await axiosInstance.post(
+        `/api/v1/courses/${courseId}/assignments`,
+        { assignment: fields }
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to create assignment: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to create assignment: ${error.message}`);
+      }
+      throw new Error('Failed to create assignment: Unknown error');
+    }
+  }
+);
+
+// Tool: update-assignment
+server.tool(
+  "update-assignment",
+  "Update an assignment. All fields are optional except courseId and assignmentId.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment"),
+    // All Canvas assignment fields as optional
+    name: z.string().optional(),
+    description: z.string().optional(),
+    due_at: z.string().optional(),
+    points_possible: z.number().optional(),
+    submission_types: z.array(z.string()).optional(),
+    published: z.boolean().optional(),
+    grading_type: z.string().optional(),
+    assignment_group_id: z.number().optional(),
+    // ...add more fields as needed
+  },
+  async (args) => {
+    const { courseId, assignmentId, ...fields } = args;
+    try {
+      const response = await axiosInstance.put(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}`,
+        { assignment: fields }
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Assignment ${assignmentId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to update assignment: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to update assignment: ${error.message}`);
+      }
+      throw new Error('Failed to update assignment: Unknown error');
+    }
+  }
+);
+
+// Tool: delete-assignment
+server.tool(
+  "delete-assignment",
+  "Delete (archive) an assignment from a course.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentId: z.string().describe("The ID of the assignment")
+  },
+  async ({ courseId, assignmentId }) => {
+    try {
+      const response = await axiosInstance.delete(
+        `/api/v1/courses/${courseId}/assignments/${assignmentId}`
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Assignment ${assignmentId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to delete assignment: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to delete assignment: ${error.message}`);
+      }
+      throw new Error('Failed to delete assignment: Unknown error');
+    }
+  }
+);
+
+// Tool: list-assignment-groups
+server.tool(
+  "list-assignment-groups",
+  "List all assignment groups (buckets) in a course.",
+  {
+    courseId: z.string().describe("The ID of the course")
+  },
+  async ({ courseId }) => {
+    try {
+      const response = await axiosInstance.get(
+        `/api/v1/courses/${courseId}/assignment_groups`
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Course ${courseId} not found`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to fetch assignment groups: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch assignment groups: ${error.message}`);
+      }
+      throw new Error('Failed to fetch assignment groups: Unknown error');
+    }
+  }
+);
+
+// Tool: create-assignment-group
+server.tool(
+  "create-assignment-group",
+  "Create a new assignment group (bucket) in a course. All fields optional except courseId.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    name: z.string().optional(),
+    position: z.number().optional(),
+    group_weight: z.number().optional(),
+    sis_source_id: z.string().optional(),
+    integration_data: z.any().optional(),
+    rules: z.any().optional()
+  },
+  async (args) => {
+    const { courseId, ...fields } = args;
+    try {
+      const response = await axiosInstance.post(
+        `/api/v1/courses/${courseId}/assignment_groups`,
+        { assignment_group: fields }
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to create assignment group: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to create assignment group: ${error.message}`);
+      }
+      throw new Error('Failed to create assignment group: Unknown error');
+    }
+  }
+);
+
+// Tool: bulk-update-assignment-dates
+server.tool(
+  "bulk-update-assignment-dates",
+  "Bulk update due/unlock/lock dates for assignments in a course.",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    assignmentDates: z.array(z.object({
+      assignment_id: z.string().describe("The ID of the assignment"),
+      due_at: z.string().optional().describe("New due date (ISO 8601)"),
+      unlock_at: z.string().optional().describe("New unlock date (ISO 8601)"),
+      lock_at: z.string().optional().describe("New lock date (ISO 8601)")
+    })).describe("Array of assignment date updates")
+  },
+  async ({ courseId, assignmentDates }) => {
+    try {
+      const response = await axiosInstance.put(
+        `/api/v1/courses/${courseId}/assignments/bulk_update`,
+        { assignment_dates: assignmentDates }
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response.data, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to bulk update assignment dates: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to bulk update assignment dates: ${error.message}`);
+      }
+      throw new Error('Failed to bulk update assignment dates: Unknown error');
     }
   }
 );
