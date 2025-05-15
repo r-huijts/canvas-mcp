@@ -1,0 +1,67 @@
+import { z } from "zod";
+import { CanvasClient } from "../canvasClient.js";
+
+export function registerStudentTools(server: any, canvas: CanvasClient) {
+  // Tool: list-students
+  server.tool(
+    "list-students",
+    "Get a complete list of all students enrolled in a specific course",
+    {
+      courseId: z.string().describe("The ID of the course"),
+      includeEmail: z.boolean().default(false).describe("Whether to include student email addresses")
+    },
+    async ({ courseId, includeEmail }: { courseId: string; includeEmail?: boolean }) => {
+      const students = [];
+      let page = 1;
+      let hasMore = true;
+      try {
+        // Fetch all pages of students
+        while (hasMore) {
+          const response = await canvas.get(
+            `/api/v1/courses/${courseId}/users`,
+            {
+              enrollment_type: ['student'],
+              per_page: 100,
+              page: page,
+              include: ['email', 'avatar_url'],
+              enrollment_state: ['active', 'invited']
+            }
+          );
+          const pageStudents = response as any[];
+          students.push(...pageStudents);
+          hasMore = pageStudents.length === 100;
+          page += 1;
+        }
+        const formattedStudents = students
+          .map(student => {
+            const parts = [
+              `Name: ${student.name}`,
+              `ID: ${student.id}`,
+              `SIS ID: ${student.sis_user_id || 'N/A'}`,
+              `Avatar URL: ${student.avatar_url || 'N/A'}`
+            ];
+            if (includeEmail && student.email) {
+              parts.push(`Email: ${student.email}`);
+            }
+            return parts.join('\n');
+          })
+          .join('\n---\n');
+        return {
+          content: [
+            {
+              type: "text",
+              text: students.length > 0 
+                ? `Students in course ${courseId}:\n\n${formattedStudents}\n\nTotal students: ${students.length}`
+                : "No students found in this course.",
+            },
+          ],
+        };
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(`Failed to fetch students: ${error.message}`);
+        }
+        throw new Error('Failed to fetch students: Unknown error');
+      }
+    }
+  );
+} 
