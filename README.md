@@ -1,6 +1,6 @@
 # Canvas MCP Server
 
-A Model Context Protocol (MCP) server that enables AI assistants like Claude to interact with Canvas LMS. This server provides tools for managing courses, announcements, rubrics, assignments, and student data through the Canvas API.
+A Model Context Protocol (MCP) server that enables AI assistants like Claude to interact with Canvas LMS. This server provides tools for managing courses, announcements, rubrics, assignments, modules, pages, and student data through the Canvas API.
 
 ## Features
 
@@ -11,6 +11,8 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
 - Access assignment details and submissions
 - View student submission history and comments
 - Analyze rubric statistics
+- **Manage course modules and module items**
+- **Manage course pages, including content, revisions, and rollbacks**
 
 ## Prerequisites
 
@@ -158,6 +160,67 @@ Gets statistics for rubric assessments on an assignment
 - Optional parameters:
   - includePointDistribution: boolean (default: true)
 - Returns detailed statistics about rubric assessment criteria
+
+### list-modules
+Lists all modules in a course, optionally including inline items
+- Required parameters:
+  - courseId: string
+- Optional parameters:
+  - includeItems: boolean (default: false)
+- Returns module names, IDs, positions, published state, and optionally item summaries
+
+### list-module-items
+Lists all items in a specific module
+- Required parameters:
+  - courseId: string
+  - moduleId: string
+- Returns item type, title, ID, position, and published state
+
+### toggle-module-publish
+Toggles the published/unpublished state of a module
+- Required parameters:
+  - courseId: string
+  - moduleId: string
+- Returns confirmation of the new published state
+
+### list-pages
+Lists all pages in a course by URL slug
+- Required parameters:
+  - courseId: string
+- Returns page titles, URL slugs, IDs, and published state
+
+### get-page-content
+Gets the content (HTML/body) of a specific page by URL slug
+- Required parameters:
+  - courseId: string
+  - pageUrl: string (the page's URL slug, e.g. 'syllabus')
+- Returns page title, slug, ID, published state, updated date, and HTML body
+
+### update-page-content
+Updates (or creates) a page by URL slug
+- Required parameters:
+  - courseId: string
+  - pageUrl: string
+- Optional parameters:
+  - title: string
+  - body: string (HTML)
+  - editingRoles: string (comma-separated roles)
+- Returns confirmation and updated page info
+
+### list-page-revisions
+Lists all revisions for a page
+- Required parameters:
+  - courseId: string
+  - pageUrl: string
+- Returns revision IDs, timestamps, and editor info
+
+### revert-page-revision
+Reverts a page to a previous revision
+- Required parameters:
+  - courseId: string
+  - pageUrl: string
+  - revisionId: string
+- Returns confirmation and new page state
 
 ## Available Prompts
 
