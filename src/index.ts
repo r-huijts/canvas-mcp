@@ -960,6 +960,180 @@ Please ensure all visualizations are clearly labeled with:
   }
 );
 
+// Tool: list-modules
+server.tool(
+  "list-modules",
+  "Return all modules in a course (optionally inline items).",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    includeItems: z.boolean().default(false).describe("Whether to include inline items for each module")
+  },
+  async ({ courseId, includeItems }) => {
+    let modules = [];
+    let page = 1;
+    let hasMore = true;
+    try {
+      while (hasMore) {
+        const response = await axiosInstance.get(
+          `/api/v1/courses/${courseId}/modules`,
+          {
+            params: {
+              per_page: 100,
+              page: page,
+              ...(includeItems ? { 'include[]': 'items' } : {})
+            }
+          }
+        );
+        const pageModules = response.data;
+        modules.push(...pageModules);
+        hasMore = pageModules.length === 100;
+        page += 1;
+      }
+      const formatted = modules.map((mod: any) => {
+        const lines = [
+          `Module: ${mod.name}`,
+          `ID: ${mod.id}`,
+          `Position: ${mod.position}`,
+          `Published: ${mod.published ? 'Yes' : 'No'}`
+        ];
+        if (includeItems && mod.items) {
+          lines.push('Items:');
+          mod.items.forEach((item: any) => {
+            lines.push(`  - [${item.type}] ${item.title || item.page_url || item.url || 'Untitled'} (ID: ${item.id})`);
+          });
+        }
+        lines.push('---');
+        return lines.join('\n');
+      }).join('\n');
+      return {
+        content: [
+          {
+            type: "text",
+            text: modules.length > 0 ? `Modules in course ${courseId}:\n\n${formatted}` : "No modules found in this course."
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Course ${courseId} not found`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to fetch modules: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch modules: ${error.message}`);
+      }
+      throw new Error('Failed to fetch modules: Unknown error');
+    }
+  }
+);
+
+// Tool: list-module-items
+server.tool(
+  "list-module-items",
+  "Given a module ID, list its items (pages, quizzes, files, etc).",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    moduleId: z.string().describe("The ID of the module")
+  },
+  async ({ courseId, moduleId }) => {
+    let items = [];
+    let page = 1;
+    let hasMore = true;
+    try {
+      while (hasMore) {
+        const response = await axiosInstance.get(
+          `/api/v1/courses/${courseId}/modules/${moduleId}/items`,
+          {
+            params: {
+              per_page: 100,
+              page: page
+            }
+          }
+        );
+        const pageItems = response.data;
+        items.push(...pageItems);
+        hasMore = pageItems.length === 100;
+        page += 1;
+      }
+      const formatted = items.map((item: any) => {
+        return [
+          `Type: ${item.type}`,
+          `Title: ${item.title || item.page_url || item.url || 'Untitled'}`,
+          `ID: ${item.id}`,
+          `Position: ${item.position}`,
+          `Published: ${item.published ? 'Yes' : 'No'}`,
+          '---'
+        ].join('\n');
+      }).join('\n');
+      return {
+        content: [
+          {
+            type: "text",
+            text: items.length > 0 ? `Items in module ${moduleId} (course ${courseId}):\n\n${formatted}` : "No items found in this module."
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Module ${moduleId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to fetch module items: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch module items: ${error.message}`);
+      }
+      throw new Error('Failed to fetch module items: Unknown error');
+    }
+  }
+);
+
+// Tool: toggle-module-publish
+server.tool(
+  "toggle-module-publish",
+  "Publish/unpublish a module (toggles the current published state).",
+  {
+    courseId: z.string().describe("The ID of the course"),
+    moduleId: z.string().describe("The ID of the module")
+  },
+  async ({ courseId, moduleId }) => {
+    try {
+      // Get current module state
+      const getResp = await axiosInstance.get(`/api/v1/courses/${courseId}/modules/${moduleId}`);
+      const current = getResp.data;
+      const newPublished = !current.published;
+      // Toggle published state
+      await axiosInstance.put(
+        `/api/v1/courses/${courseId}/modules/${moduleId}`,
+        { published: newPublished }
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Module ${moduleId} in course ${courseId} is now ${newPublished ? 'published' : 'unpublished'}.`
+          }
+        ]
+      };
+    } catch (error: any) {
+      console.error('Full error details:', error.response?.data || error);
+      if (error.response?.status === 404) {
+        throw new Error(`Module ${moduleId} not found in course ${courseId}`);
+      }
+      if (error.response?.data?.errors) {
+        throw new Error(`Failed to toggle module publish: ${JSON.stringify(error.response.data.errors)}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Failed to toggle module publish: ${error.message}`);
+      }
+      throw new Error('Failed to toggle module publish: Unknown error');
+    }
+  }
+);
+
 // Start the server
 async function startServer() {
   try {
