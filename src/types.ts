@@ -22,7 +22,7 @@ export interface Rubric {
   id: string;
   title: string;
   description?: string;
-}
+} 
 
 export interface RubricStat {
   id: string;
