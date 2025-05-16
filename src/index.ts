@@ -13,7 +13,7 @@ import { registerPageTools } from './tools/pages.js';
 import { registerSectionTools } from './tools/sections.js';
 import { registerSubmissionTools } from './tools/submissions.js';
 import { registerRubricTools } from './tools/rubrics.js';
-
+import { registerPrompts } from "./tools/prompts.js";
 // Load environment variables
 dotenv.config();
 
@@ -38,19 +38,6 @@ if (!config.apiToken) {
 // Create the CanvasClient instance
 const canvas = new CanvasClient(config.baseUrl, config.apiToken);
 
-// Helper method to calculate median
-function calculateMedian(numbers: number[]): number {
-  if (numbers.length === 0) return 0;
-  
-  const sorted = [...numbers].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-
-  if (sorted.length % 2 === 0) {
-    return Number(((sorted[middle - 1] + sorted[middle]) / 2).toFixed(2));
-  }
-  return Number(sorted[middle].toFixed(2));
-}
-
 // Register course-related tools
 registerCourseTools(server, canvas);
 registerStudentTools(server, canvas);
@@ -61,7 +48,7 @@ registerPageTools(server, canvas);
 registerSectionTools(server, canvas);
 registerSubmissionTools(server, canvas);
 registerRubricTools(server, canvas);
-
+registerPrompts(server, canvas);
 // Start the server
 async function startServer() {
   try {

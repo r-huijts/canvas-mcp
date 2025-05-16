@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerPromptTools(server: any, canvas: CanvasClient) {
+export function registerPrompts(server: any, canvas: CanvasClient) {
   server.prompt(
     "analyze-rubric-statistics",
     "Analyze rubric statistics for formative assignments in a course",
