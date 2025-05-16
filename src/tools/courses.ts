@@ -10,12 +10,12 @@ export function registerCourseTools(server: any, canvas: CanvasClient) {
     {},
     async () => {
       try {
-        const courses: Course[] = await canvas.get('/api/v1/courses', {
+        const courses: Course[] = (await canvas.listCourses({
           enrollment_state: 'active',
           state: ['available'],
           per_page: 100,
           include: ['term']
-        });
+        }) as any) as Course[];
         const formattedCourses = courses
           .filter(course => course.workflow_state === 'available')
           .map((course: Course) => {
@@ -53,14 +53,11 @@ export function registerCourseTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, title, message }: { courseId: string; title: string; message: string }) => {
       try {
-        await canvas.post(
-          `/api/v1/courses/${courseId}/discussion_topics`,
-          {
-            title,
-            message,
-            is_announcement: true,
-          }
-        );
+        await canvas.postAnnouncement(courseId, {
+          title,
+          message,
+          is_announcement: true,
+        });
         return {
           content: [
             {

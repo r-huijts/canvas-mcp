@@ -11,23 +11,19 @@ export function registerStudentTools(server: any, canvas: CanvasClient) {
       includeEmail: z.boolean().default(false).describe("Whether to include student email addresses")
     },
     async ({ courseId, includeEmail }: { courseId: string; includeEmail?: boolean }) => {
-      const students = [];
+      const students: any[] = [];
       let page = 1;
       let hasMore = true;
       try {
-        // Fetch all pages of students
         while (hasMore) {
-          const response = await canvas.get(
-            `/api/v1/courses/${courseId}/users`,
-            {
-              enrollment_type: ['student'],
-              per_page: 100,
-              page: page,
-              include: ['email', 'avatar_url'],
-              enrollment_state: ['active', 'invited']
-            }
-          );
-          const pageStudents = response as any[];
+          const params: any = {
+            enrollment_type: ['student'],
+            per_page: 100,
+            page: page,
+            include: ['email', 'avatar_url'],
+            enrollment_state: ['active', 'invited']
+          };
+          const pageStudents = (await canvas.listStudents(courseId, params) as any[]);
           students.push(...pageStudents);
           hasMore = pageStudents.length === 100;
           page += 1;

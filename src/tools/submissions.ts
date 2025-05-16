@@ -12,9 +12,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
       try {
-        const response = await canvas.get(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`
-        );
+        const response = await canvas.listAssignmentSubmissions(courseId, assignmentId);
         return {
           content: [
             {
@@ -52,10 +50,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
         if (score !== undefined) payload.score = score;
         if (rubric_assessment !== undefined) payload.rubric_assessment = rubric_assessment;
         if (comment !== undefined) payload.comment = { text_comment: comment };
-        const response = await canvas.put(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}`,
-          payload
-        );
+        const response = await canvas.gradeSubmission(courseId, assignmentId, userId, payload);
         return {
           content: [
             {
@@ -85,6 +80,8 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, assignmentId, userId, comment }: { courseId: string; assignmentId: string; userId: string; comment: string }) => {
       try {
+        // Note: A specific client method for this could be added to CanvasClient
+        // For now, using the generic put method directly as the endpoint structure is slightly different.
         const response = await canvas.put(
           `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}/comments`,
           { comment: { text_comment: comment } }

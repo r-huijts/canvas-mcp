@@ -11,20 +11,17 @@ export function registerSectionTools(server: any, canvas: CanvasClient) {
       includeStudentCount: z.boolean().default(false).describe("Whether to include the number of students in each section")
     },
     async ({ courseId, includeStudentCount = false }: { courseId: string; includeStudentCount?: boolean }) => {
-      let sections = [];
+      let sections: any[] = [];
       let page = 1;
       let hasMore = true;
       try {
         while (hasMore) {
-          const response = await canvas.get(
-            `/api/v1/courses/${courseId}/sections`,
-            {
-              per_page: 100,
-              page: page,
-              include: includeStudentCount ? ['total_students'] : []
-            }
-          );
-          const pageSections = response as any[];
+          const params: any = {
+            per_page: 100,
+            page: page,
+            include: includeStudentCount ? ['total_students'] : []
+          };
+          const pageSections = (await canvas.listSections(courseId, params) as any[]);
           sections.push(...pageSections);
           hasMore = pageSections.length === 100;
           page += 1;
@@ -81,27 +78,23 @@ export function registerSectionTools(server: any, canvas: CanvasClient) {
       includeComments: z.boolean().default(true).describe("Whether to include submission comments")
     },
     async ({ courseId, assignmentId, sectionId, includeComments = true }: { courseId: string; assignmentId: string; sectionId: string; includeComments?: boolean }) => {
-      let submissions = [];
+      let submissions: any[] = [];
       let page = 1;
       let hasMore = true;
       try {
-        await canvas.get(
-          `/api/v1/courses/${courseId}/sections/${sectionId}`
-        );
+        await canvas.getSection(courseId, sectionId);
+
         while (hasMore) {
-          const response = await canvas.get(
-            `/api/v1/sections/${sectionId}/assignments/${assignmentId}/submissions`,
-            {
-              per_page: 100,
-              page: page,
-              include: [
-                'user',
-                'submission_comments',
-                'assignment'
-              ]
-            }
-          );
-          const pageSubmissions = response as any[];
+          const params: any = {
+            per_page: 100,
+            page: page,
+            include: [
+              'user',
+              'submission_comments',
+              'assignment'
+            ]
+          };
+          const pageSubmissions = (await canvas.listSectionAssignmentSubmissions(sectionId, assignmentId, params) as any[]);
           submissions.push(...pageSubmissions);
           hasMore = pageSubmissions.length === 100;
           page += 1;

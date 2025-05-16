@@ -11,9 +11,7 @@ export function registerAssignmentGroupTools(server: any, canvas: CanvasClient) 
     },
     async ({ courseId }: { courseId: string }) => {
       try {
-        const response = await canvas.get(
-          `/api/v1/courses/${courseId}/assignment_groups`
-        );
+        const response = await canvas.listAssignmentGroups(courseId);
         return {
           content: [
             {
@@ -47,10 +45,7 @@ export function registerAssignmentGroupTools(server: any, canvas: CanvasClient) 
     async (args: any) => {
       const { courseId, ...fields } = args;
       try {
-        const response = await canvas.post(
-          `/api/v1/courses/${courseId}/assignment_groups`,
-          { assignment_group: fields }
-        );
+        const response = await canvas.createAssignmentGroup(courseId, { assignment_group: fields });
         return {
           content: [
             {
@@ -83,6 +78,8 @@ export function registerAssignmentGroupTools(server: any, canvas: CanvasClient) 
     },
     async ({ courseId, assignmentDates }: { courseId: string; assignmentDates: any[] }) => {
       try {
+        // Note: A specific client method for this bulk update could be added to CanvasClient
+        // For now, using the generic put method directly.
         const response = await canvas.put(
           `/api/v1/courses/${courseId}/assignments/bulk_update`,
           { assignment_dates: assignmentDates }

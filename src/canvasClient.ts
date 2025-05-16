@@ -76,4 +76,103 @@ export class CanvasClient {
     }
     throw new Error('Unknown error occurred in CanvasClient');
   }
+
+  // --- Courses ---
+  async listCourses(params: any = {}) {
+    return this.get('/api/v1/courses', params);
+  }
+  async postAnnouncement(courseId: string, data: any) {
+    return this.post(`/api/v1/courses/${courseId}/discussion_topics`, data);
+  }
+
+  // --- Assignments ---
+  async listCourseAssignments(courseId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/assignments`, params);
+  }
+  async getAssignment(courseId: string, assignmentId: string) {
+    return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}`);
+  }
+  async createAssignment(courseId: string, data: any) {
+    return this.post(`/api/v1/courses/${courseId}/assignments`, data);
+  }
+  async updateAssignment(courseId: string, assignmentId: string, data: any) {
+    return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, data);
+  }
+
+  // --- Assignment Groups ---
+  async listAssignmentGroups(courseId: string) {
+    return this.get(`/api/v1/courses/${courseId}/assignment_groups`);
+  }
+  async createAssignmentGroup(courseId: string, data: any) {
+    return this.post(`/api/v1/courses/${courseId}/assignment_groups`, data);
+  }
+
+  // --- Modules ---
+  async listModules(courseId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/modules`, params);
+  }
+  async listModuleItems(courseId: string, moduleId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/modules/${moduleId}/items`, params);
+  }
+  async getModule(courseId: string, moduleId: string) {
+    return this.get(`/api/v1/courses/${courseId}/modules/${moduleId}`);
+  }
+  async updateModulePublish(courseId: string, moduleId: string, data: any) {
+    return this.put(`/api/v1/courses/${courseId}/modules/${moduleId}`, data);
+  }
+
+  // --- Pages ---
+  async listPages(courseId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/pages`, params);
+  }
+  async getPage(courseId: string, pageUrl: string) {
+    return this.get(`/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`);
+  }
+  async listPageRevisions(courseId: string, pageUrl: string) {
+    return this.get(`/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}/revisions`);
+  }
+  async revertPageRevision(courseId: string, pageUrl: string, revisionId: string) {
+    return this.post(`/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}/revisions/${revisionId}/revert`);
+  }
+  async updateOrCreatePage(courseId: string, pageUrl: string, data: any) {
+    return this.put(`/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`, data);
+  }
+
+  // --- Rubrics ---
+  async listRubrics(courseId: string) {
+    return this.get(`/api/v1/courses/${courseId}/rubrics`);
+  }
+  async getRubricStatistics(courseId: string, assignmentId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, params);
+  }
+  async listRubricAssessments(courseId: string, assignmentId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params);
+  }
+  async attachRubricToAssignment(courseId: string, assignmentId: string, rubricId: string) {
+    return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}?rubric_id=${encodeURIComponent(rubricId)}`);
+  }
+
+  // --- Students ---
+  async listStudents(courseId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/users`, params);
+  }
+
+  // --- Sections ---
+  async listSections(courseId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/sections`, params);
+  }
+  async getSection(courseId: string, sectionId: string) {
+    return this.get(`/api/v1/courses/${courseId}/sections/${sectionId}`);
+  }
+  async listSectionAssignmentSubmissions(sectionId: string, assignmentId: string, params: any = {}) {
+    return this.get(`/api/v1/sections/${sectionId}/assignments/${assignmentId}/submissions`, params);
+  }
+
+  // --- Submissions ---
+  async listAssignmentSubmissions(courseId: string, assignmentId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params);
+  }
+  async gradeSubmission(courseId: string, assignmentId: string, userId: string, data: any) {
+    return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}`, data);
+  }
 } 

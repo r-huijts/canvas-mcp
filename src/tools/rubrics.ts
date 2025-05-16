@@ -13,9 +13,7 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId }: { courseId: string }) => {
       try {
-        const rubrics: Rubric[] = await canvas.get(
-          `/api/v1/courses/${courseId}/rubrics`
-        );
+        const rubrics = (await canvas.listRubrics(courseId) as any) as Rubric[];
         const formattedRubrics = rubrics.map((rubric: Rubric) => 
           `Rubric: ${rubric.title}\nID: ${rubric.id}\nDescription: ${rubric.description || 'No description'}\n---`
         ).join('\n');
@@ -47,20 +45,16 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, assignmentId, includePointDistribution = true }: { courseId: string; assignmentId: string; includePointDistribution?: boolean }) => {
       try {
-        // First get the assignment details with rubric
-        const response = await canvas.get(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}`,
-          {
-            params: {
-              include: ['rubric']
-            }
-          }
-        ) as any;
+        const response = (await canvas.getRubricStatistics(courseId, assignmentId, {
+          include: ['rubric']
+        }) as any);
         if (!response.rubric) {
           throw new Error('No rubric found for this assignment');
         }
-        // Get all submissions with rubric assessments
+
         const submissions = await canvas.fetchAllPages(
+          // Note: fetchAllPages still uses a direct URI. This could be refactored further
+          // by adding specific fetchAll methods to CanvasClient if desired.
           `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
           {
             params: {
@@ -69,7 +63,7 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
             }
           }
         );
-        // Calculate statistics for each rubric criterion
+
         const rubricStats = (response.rubric as any[]).map((criterion: any) => {
           const scores = submissions
             .filter((sub: any) => sub.rubric_assessment?.[criterion.id]?.points !== undefined)
@@ -181,10 +175,7 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
       try {
-        const rubricAssessments = await canvas.get(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
-          { 'include[]': 'rubric_assessment' }
-        ) as any[];
+        const rubricAssessments = (await canvas.listRubricAssessments(courseId, assignmentId, { 'include[]': 'rubric_assessment' }) as any[]);
         return {
           content: [
             {
@@ -213,9 +204,7 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, assignmentId, rubricId }: { courseId: string; assignmentId: string; rubricId: string }) => {
       try {
-        const result = await canvas.put(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}?rubric_id=${encodeURIComponent(rubricId)}`
-        );
+        const result = await canvas.attachRubricToAssignment(courseId, assignmentId, rubricId);
         return {
           content: [
             {

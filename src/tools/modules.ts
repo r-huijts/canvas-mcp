@@ -11,20 +11,17 @@ export function registerModuleTools(server: any, canvas: CanvasClient) {
       includeItems: z.boolean().default(false).describe("Whether to include inline items for each module")
     },
     async ({ courseId, includeItems }: { courseId: string; includeItems?: boolean }) => {
-      let modules = [];
+      let modules: any[] = [];
       let page = 1;
       let hasMore = true;
       try {
         while (hasMore) {
-          const response = await canvas.get(
-            `/api/v1/courses/${courseId}/modules`,
-            {
-              per_page: 100,
-              page: page,
-              ...(includeItems ? { 'include[]': 'items' } : {})
-            }
-          );
-          const pageModules = response as any[];
+          const params: any = {
+            per_page: 100,
+            page: page,
+            ...(includeItems ? { 'include[]': 'items' } : {})
+          };
+          const pageModules = (await canvas.listModules(courseId, params) as any[]);
           modules.push(...pageModules);
           hasMore = pageModules.length === 100;
           page += 1;
@@ -71,19 +68,13 @@ export function registerModuleTools(server: any, canvas: CanvasClient) {
       moduleId: z.string().describe("The ID of the module")
     },
     async ({ courseId, moduleId }: { courseId: string; moduleId: string }) => {
-      let items = [];
+      let items: any[] = [];
       let page = 1;
       let hasMore = true;
       try {
         while (hasMore) {
-          const response = await canvas.get(
-            `/api/v1/courses/${courseId}/modules/${moduleId}/items`,
-            {
-              per_page: 100,
-              page: page
-            }
-          );
-          const pageItems = response as any[];
+          const params = { per_page: 100, page: page };
+          const pageItems = (await canvas.listModuleItems(courseId, moduleId, params) as any[]);
           items.push(...pageItems);
           hasMore = pageItems.length === 100;
           page += 1;
@@ -125,13 +116,9 @@ export function registerModuleTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, moduleId }: { courseId: string; moduleId: string }) => {
       try {
-        const getResp = await canvas.get(`/api/v1/courses/${courseId}/modules/${moduleId}`) as any;
-        const current = getResp;
+        const current = (await canvas.getModule(courseId, moduleId) as any);
         const newPublished = !current.published;
-        await canvas.put(
-          `/api/v1/courses/${courseId}/modules/${moduleId}`,
-          { published: newPublished }
-        );
+        await canvas.updateModulePublish(courseId, moduleId, { published: newPublished });
         return {
           content: [
             {

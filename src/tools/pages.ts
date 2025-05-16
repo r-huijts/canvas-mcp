@@ -10,21 +10,13 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course")
     },
     async ({ courseId }: { courseId: string }) => {
-      let pages = [];
+      let pages: any[] = [];
       let page = 1;
       let hasMore = true;
       try {
         while (hasMore) {
-          const response = await canvas.get(
-            `/api/v1/courses/${courseId}/pages`,
-            {
-              params: {
-                per_page: 100,
-                page: page
-              }
-            }
-          );
-          const pagePages = response as any[];
+          const params = { per_page: 100, page: page };
+          const pagePages = (await canvas.listPages(courseId, params) as any[]);
           pages.push(...pagePages);
           hasMore = pagePages.length === 100;
           page += 1;
@@ -63,9 +55,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, pageUrl }: { courseId: string; pageUrl: string }) => {
       try {
-        const page = await canvas.get(
-          `/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`
-        ) as any;
+        const page = (await canvas.getPage(courseId, pageUrl) as any);
         return {
           content: [
             {
@@ -109,10 +99,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
         if (title !== undefined) wiki_page.title = title;
         if (body !== undefined) wiki_page.body = body;
         if (editingRoles !== undefined) wiki_page.editing_roles = editingRoles;
-        const page = await canvas.put(
-          `/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`,
-          { wiki_page }
-        ) as any;
+        const page = (await canvas.updateOrCreatePage(courseId, pageUrl, { wiki_page }) as any);
         return {
           content: [
             {
@@ -146,9 +133,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, pageUrl }: { courseId: string; pageUrl: string }) => {
       try {
-        const revisions = await canvas.get(
-          `/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}/revisions`
-        ) as any[];
+        const revisions = (await canvas.listPageRevisions(courseId, pageUrl) as any[]);
         const formatted = revisions.map((rev: any) => [
           `Revision ID: ${rev.id}`,
           `Updated At: ${rev.updated_at}`,
@@ -183,9 +168,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, pageUrl, revisionId }: { courseId: string; pageUrl: string; revisionId: string }) => {
       try {
-        const page = await canvas.post(
-          `/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}/revisions/${revisionId}/revert`
-        ) as any;
+        const page = (await canvas.revertPageRevision(courseId, pageUrl, revisionId) as any);
         return {
           content: [
             {

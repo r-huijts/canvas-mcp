@@ -12,24 +12,19 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       includeSubmissionHistory: z.boolean().default(false).describe("Whether to include submission history details")
     },
     async ({ courseId, studentId, includeSubmissionHistory = false }: { courseId: string; studentId?: string; includeSubmissionHistory?: boolean }) => {
-      let assignments = [];
+      let assignments: any[] = [];
       let page = 1;
       let hasMore = true;
       try {
         while (hasMore) {
-          const response = await canvas.get(
-            `/api/v1/courses/${courseId}/assignments`,
-            {
-              params: {
-                per_page: 100,
-                page: page,
-                include: studentId ? ['submission', 'submission_comments', 'submission_history'] : [],
-                student_ids: studentId ? [studentId] : undefined,
-                order_by: 'position',
-              }
-            }
-          );
-          const pageAssignments = response as any[];
+          const params: any = {
+            per_page: 100,
+            page: page,
+            include: studentId ? ['submission', 'submission_comments', 'submission_history'] : [],
+            student_ids: studentId ? [studentId] : undefined,
+            order_by: 'position',
+          };
+          const pageAssignments = (await canvas.listCourseAssignments(courseId, params) as any[]);
           assignments.push(...pageAssignments);
           hasMore = pageAssignments.length === 100;
           page += 1;
@@ -114,9 +109,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
       try {
-        const response = await canvas.get(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}`
-        );
+        const response = await canvas.getAssignment(courseId, assignmentId);
         return {
           content: [
             {
@@ -152,10 +145,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
     async (args: any) => {
       const { courseId, ...fields } = args;
       try {
-        const response = await canvas.post(
-          `/api/v1/courses/${courseId}/assignments`,
-          { assignment: fields }
-        );
+        const response = await canvas.createAssignment(courseId, { assignment: fields });
         return {
           content: [
             {
@@ -192,10 +182,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
     async (args: any) => {
       const { courseId, assignmentId, ...fields } = args;
       try {
-        const response = await canvas.put(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}`,
-          { assignment: fields }
-        );
+        const response = await canvas.updateAssignment(courseId, assignmentId, { assignment: fields });
         return {
           content: [
             {
@@ -223,9 +210,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
     },
     async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
       try {
-        const response = await canvas.delete(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}`
-        );
+        const response = await canvas.delete(`/api/v1/courses/${courseId}/assignments/${assignmentId}`);
         return {
           content: [
             {
