@@ -14,6 +14,63 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
 - **Manage course modules and module items**
 - **Manage course pages, including content, revisions, and rollbacks**
 
+## Student Data Privacy & Anonymization 🔒
+
+This Canvas MCP server includes **privacy-first anonymization** for student data. By default, all student names and emails are anonymized to protect privacy, but you can request real data when needed using natural language.
+
+### How It Works
+
+**Default Behavior (Anonymous):**
+- Student names become: `Student 1`, `Student 2`, etc.
+- Student emails become: `student1@example.com`, `student2@example.com`
+- Same student always gets the same pseudonym across all API calls
+- Teacher/admin names are **never anonymized** (preserved in comments)
+
+**Natural Language Control:**
+You can easily switch to real data by asking for it naturally:
+
+```
+❌ Anonymous (default):
+"List all students in course 123"
+→ Returns: Student 1, Student 2, student1@example.com
+
+✅ Non-anonymous:
+"List all students in course 123, but show their actual names and emails"
+"Get assignment submissions with real student names"  
+"Show me student data with actual identities"
+→ Returns: John Smith, Jane Doe, john.smith@university.edu
+```
+
+### Affected Tools
+
+The following tools support anonymization control:
+- `list-students` - Student enrollment data
+- `list-assignments` - When including student submission data  
+- `list-assignment-submissions` - All submission data
+- `list-section-submissions` - Section-filtered submissions
+- `list-rubric-assessments` - Rubric assessment data
+
+### Privacy Features
+
+🔒 **Privacy by Default**: All student data is anonymized unless explicitly requested otherwise  
+🗣️ **Natural Language**: Just ask for "actual names" when you need them  
+👨‍🏫 **Teacher Protection**: Teacher/admin names are never anonymized  
+🔄 **Consistent Mapping**: Same student gets same pseudonym across all calls  
+🎯 **Selective**: Only anonymizes student data, preserves all other information  
+
+### Technical Implementation
+
+Each tool that handles student data includes an `anonymous` parameter:
+- **Default**: `anonymous: true` (privacy-first)
+- **Override**: Claude automatically sets `anonymous: false` when you request real names
+- **Preserved**: All functional IDs and non-personal data remain unchanged
+
+Example of how Claude interprets your requests:
+- "with their actual names" → `anonymous: false`
+- "show real emails" → `anonymous: false`  
+- "anonymized" → `anonymous: true` (default anyway)
+- "hide student identities" → `anonymous: true`
+
 ## Prerequisites
 
 - Node.js (v16 or higher)
@@ -105,7 +162,9 @@ Gets a complete list of students enrolled in a course
   - courseId: string
 - Optional parameters:
   - includeEmail: boolean (default: false)
+  - anonymous: boolean (default: true) - Whether to anonymize student names/emails
 - Returns student names, IDs, and optional email addresses
+- **Privacy**: Student data is anonymized by default (use "with actual names" to override)
 
 ### list-assignments
 Gets all assignments in a course with submission status
@@ -114,7 +173,9 @@ Gets all assignments in a course with submission status
 - Optional parameters:
   - studentId: string
   - includeSubmissionHistory: boolean (default: false)
+  - anonymous: boolean (default: true) - Whether to anonymize student data in submissions
 - Returns assignment details and submission status
+- **Privacy**: Student submission data is anonymized by default
 
 ### list-assignment-submissions
 Gets all student submissions for a specific assignment
@@ -122,8 +183,9 @@ Gets all student submissions for a specific assignment
   - courseId: string
   - assignmentId: string
 - Optional parameters:
-  - includeComments: boolean (default: true)
+  - anonymous: boolean (default: true) - Whether to anonymize student names/emails
 - Returns submission details, grades, and comments
+- **Privacy**: Student data is anonymized by default
 
 ### list-section-submissions
 Gets all student submissions for a specific assignment filtered by section
@@ -133,7 +195,9 @@ Gets all student submissions for a specific assignment filtered by section
   - sectionId: string
 - Optional parameters:
   - includeComments: boolean (default: true)
+  - anonymous: boolean (default: true) - Whether to anonymize student names/emails
 - Returns submission details filtered by the specified section
+- **Privacy**: Student data is anonymized by default
 
 ### list-sections
 Gets a list of all sections in a course
