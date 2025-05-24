@@ -58,6 +58,30 @@ The following tools support anonymization control:
 🔄 **Consistent Mapping**: Same student gets same pseudonym across all calls  
 🎯 **Selective**: Only anonymizes student data, preserves all other information  
 
+### Why Teachers/Admins Aren't Anonymized
+
+The anonymization system specifically targets **student privacy** while preserving educational context:
+
+**🎓 Educational Rationale:**
+- **Students are the protected population** - They're the vulnerable party whose privacy needs protection
+- **Teacher feedback context matters** - Knowing which instructor provided feedback is pedagogically valuable
+- **Staff accountability** - Teachers and admins are professional staff, not students requiring privacy protection
+
+**📝 Practical Examples:**
+```
+Assignment Comments (with anonymization enabled):
+✅ "Excellent analysis of the data trends! - Prof. Johnson"
+❌ "I found this section confusing - Student 1" 
+❌ "Thanks for the feedback! - Student 2"
+```
+
+**🔍 Technical Implementation:**
+- Comments include an `author.role` field (`'student'`, `'teacher'`, `'admin'`, `'ta'`)
+- Only authors with `role === 'student'` get anonymized
+- Staff roles preserve real names for educational context
+
+This design ensures student privacy while maintaining the educational value of knowing which instructor provided specific feedback. If you need full anonymization including staff, you can modify the anonymizer logic or request this as a feature enhancement.
+
 ### Technical Implementation
 
 Each tool that handles student data includes an `anonymous` parameter:
