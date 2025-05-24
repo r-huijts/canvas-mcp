@@ -8,11 +8,12 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
     "Fetch every student's submission status & comments for an assignment.",
     {
       courseId: z.string().describe("The ID of the course"),
-      assignmentId: z.string().describe("The ID of the assignment")
+      assignmentId: z.string().describe("The ID of the assignment"),
+      anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
-    async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
+    async ({ courseId, assignmentId, anonymous = true }: { courseId: string; assignmentId: string; anonymous?: boolean }) => {
       try {
-        const response = await canvas.listAssignmentSubmissions(courseId, assignmentId);
+        const response = await canvas.listAssignmentSubmissions(courseId, assignmentId, {}, { anonymous });
         return {
           content: [
             {

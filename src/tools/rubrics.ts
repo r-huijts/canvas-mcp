@@ -171,11 +171,12 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
     "List all rubric assessments for an assignment.",
     {
       courseId: z.string().describe("The ID of the course"),
-      assignmentId: z.string().describe("The ID of the assignment")
+      assignmentId: z.string().describe("The ID of the assignment"),
+      anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
-    async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
+    async ({ courseId, assignmentId, anonymous = true }: { courseId: string; assignmentId: string; anonymous?: boolean }) => {
       try {
-        const rubricAssessments = (await canvas.listRubricAssessments(courseId, assignmentId, { 'include[]': 'rubric_assessment' }) as any[]);
+        const rubricAssessments = (await canvas.listRubricAssessments(courseId, assignmentId, { 'include[]': 'rubric_assessment' }, { anonymous }) as any[]);
         return {
           content: [
             {

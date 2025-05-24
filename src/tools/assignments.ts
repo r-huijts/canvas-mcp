@@ -9,9 +9,10 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
     {
       courseId: z.string().describe("The ID of the course"),
       studentId: z.string().optional().describe("Optional: Get submission status for a specific student"),
-      includeSubmissionHistory: z.boolean().default(false).describe("Whether to include submission history details")
+      includeSubmissionHistory: z.boolean().default(false).describe("Whether to include submission history details"),
+      anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails in submission data (default: true for privacy)")
     },
-    async ({ courseId, studentId, includeSubmissionHistory = false }: { courseId: string; studentId?: string; includeSubmissionHistory?: boolean }) => {
+    async ({ courseId, studentId, includeSubmissionHistory = false, anonymous = true }: { courseId: string; studentId?: string; includeSubmissionHistory?: boolean; anonymous?: boolean }) => {
       let assignments: any[] = [];
       let page = 1;
       let hasMore = true;
@@ -24,7 +25,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
             student_ids: studentId ? [studentId] : undefined,
             order_by: 'position',
           };
-          const pageAssignments = (await canvas.listCourseAssignments(courseId, params) as any[]);
+          const pageAssignments = (await canvas.listCourseAssignments(courseId, params, { anonymous }) as any[]);
           assignments.push(...pageAssignments);
           hasMore = pageAssignments.length === 100;
           page += 1;

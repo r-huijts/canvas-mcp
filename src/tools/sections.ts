@@ -75,9 +75,10 @@ export function registerSectionTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       assignmentId: z.string().describe("The ID of the assignment"),
       sectionId: z.string().describe("The ID of the section"),
-      includeComments: z.boolean().default(true).describe("Whether to include submission comments")
+      includeComments: z.boolean().default(true).describe("Whether to include submission comments"),
+      anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
-    async ({ courseId, assignmentId, sectionId, includeComments = true }: { courseId: string; assignmentId: string; sectionId: string; includeComments?: boolean }) => {
+    async ({ courseId, assignmentId, sectionId, includeComments = true, anonymous = true }: { courseId: string; assignmentId: string; sectionId: string; includeComments?: boolean; anonymous?: boolean }) => {
       let submissions: any[] = [];
       let page = 1;
       let hasMore = true;
@@ -94,7 +95,7 @@ export function registerSectionTools(server: any, canvas: CanvasClient) {
               'assignment'
             ]
           };
-          const pageSubmissions = (await canvas.listSectionAssignmentSubmissions(sectionId, assignmentId, params) as any[]);
+          const pageSubmissions = (await canvas.listSectionAssignmentSubmissions(sectionId, assignmentId, params, { anonymous }) as any[]);
           submissions.push(...pageSubmissions);
           hasMore = pageSubmissions.length === 100;
           page += 1;

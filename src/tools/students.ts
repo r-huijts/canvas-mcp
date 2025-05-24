@@ -8,9 +8,10 @@ export function registerStudentTools(server: any, canvas: CanvasClient) {
     "Get a complete list of all students enrolled in a specific course",
     {
       courseId: z.string().describe("The ID of the course"),
-      includeEmail: z.boolean().default(false).describe("Whether to include student email addresses")
+      includeEmail: z.boolean().default(false).describe("Whether to include student email addresses"),
+      anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
-    async ({ courseId, includeEmail }: { courseId: string; includeEmail?: boolean }) => {
+    async ({ courseId, includeEmail, anonymous = true }: { courseId: string; includeEmail?: boolean; anonymous?: boolean }) => {
       const students: any[] = [];
       let page = 1;
       let hasMore = true;
@@ -23,7 +24,7 @@ export function registerStudentTools(server: any, canvas: CanvasClient) {
             include: ['email', 'avatar_url'],
             enrollment_state: ['active', 'invited']
           };
-          const pageStudents = (await canvas.listStudents(courseId, params) as any[]);
+          const pageStudents = (await canvas.listStudents(courseId, params, { anonymous }) as any[]);
           students.push(...pageStudents);
           hasMore = pageStudents.length === 100;
           page += 1;

@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { DataAnonymizer } from './anonymizer.js';
 
 export class CanvasClient {
   private axios: AxiosInstance;
@@ -86,8 +87,9 @@ export class CanvasClient {
   }
 
   // --- Assignments ---
-  async listCourseAssignments(courseId: string, params: any = {}) {
-    return this.get(`/api/v1/courses/${courseId}/assignments`, params);
+  async listCourseAssignments(courseId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
+    const data = await this.get(`/api/v1/courses/${courseId}/assignments`, params) as any[];
+    return options.anonymous !== false ? DataAnonymizer.anonymizeAssignments(data) : data;
   }
   async getAssignment(courseId: string, assignmentId: string) {
     return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}`);
@@ -145,16 +147,18 @@ export class CanvasClient {
   async getRubricStatistics(courseId: string, assignmentId: string, params: any = {}) {
     return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, params);
   }
-  async listRubricAssessments(courseId: string, assignmentId: string, params: any = {}) {
-    return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params);
+  async listRubricAssessments(courseId: string, assignmentId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
+    const data = await this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params) as any[];
+    return options.anonymous !== false ? DataAnonymizer.anonymizeSubmissions(data) : data;
   }
   async attachRubricToAssignment(courseId: string, assignmentId: string, rubricId: string) {
     return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}?rubric_id=${encodeURIComponent(rubricId)}`);
   }
 
   // --- Students ---
-  async listStudents(courseId: string, params: any = {}) {
-    return this.get(`/api/v1/courses/${courseId}/users`, params);
+  async listStudents(courseId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
+    const data = await this.get(`/api/v1/courses/${courseId}/users`, params) as any[];
+    return options.anonymous !== false ? DataAnonymizer.anonymizeUsers(data) : data;
   }
 
   // --- Sections ---
@@ -164,13 +168,15 @@ export class CanvasClient {
   async getSection(courseId: string, sectionId: string) {
     return this.get(`/api/v1/courses/${courseId}/sections/${sectionId}`);
   }
-  async listSectionAssignmentSubmissions(sectionId: string, assignmentId: string, params: any = {}) {
-    return this.get(`/api/v1/sections/${sectionId}/assignments/${assignmentId}/submissions`, params);
+  async listSectionAssignmentSubmissions(sectionId: string, assignmentId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
+    const data = await this.get(`/api/v1/sections/${sectionId}/assignments/${assignmentId}/submissions`, params) as any[];
+    return options.anonymous !== false ? DataAnonymizer.anonymizeSubmissions(data) : data;
   }
 
   // --- Submissions ---
-  async listAssignmentSubmissions(courseId: string, assignmentId: string, params: any = {}) {
-    return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params);
+  async listAssignmentSubmissions(courseId: string, assignmentId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
+    const data = await this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params) as any[];
+    return options.anonymous !== false ? DataAnonymizer.anonymizeSubmissions(data) : data;
   }
   async gradeSubmission(courseId: string, assignmentId: string, userId: string, data: any) {
     return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}`, data);
