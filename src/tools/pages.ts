@@ -141,7 +141,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
   // Tool: generate-styleguide
   server.tool(
     "generate-styleguide",
-    "Generate and save a comprehensive Canvas styleguide page for consistent formatting across all course pages. This creates design standards, accessibility guidelines, and Canvas-specific best practices.",
+    "🎨 FOUNDATION TOOL: Generate and save a comprehensive Canvas styleguide page that serves as the formatting foundation for ALL course pages. This creates design standards, accessibility guidelines, and Canvas-specific best practices. ALWAYS create this FIRST before working with any other page content to ensure professional consistency!",
     {
       courseId: z.string().describe("The ID of the course where the styleguide will be saved"),
       includeExamples: z.boolean().default(true).describe("Whether to include visual examples of each style element"),
@@ -187,7 +187,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
   // Tool: get-styleguide
   server.tool(
     "get-styleguide",
-    "Fetch the Canvas styleguide for a course to reference during page creation or editing. This ensures consistency with established design standards.",
+    "📋 ESSENTIAL: Fetch the Canvas styleguide for a course to reference during page creation or editing. This is CRITICAL for maintaining consistency with established design standards. Always use this before creating or modifying any page content!",
     {
       courseId: z.string().describe("The ID of the course"),
       slug: z.string().default(DEFAULT_STYLEGUIDE_SLUG).describe("URL slug of the styleguide page")
@@ -226,7 +226,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
   // Tool: list-pages
   server.tool(
     "list-pages",
-    "List all pages in a course (by URL slug).",
+    "List all pages in a course (by URL slug). 📋 TIP: Check if a 'canvas-styleguide' page exists - if not, create one with generate-styleguide to ensure consistent formatting across all course pages.",
     {
       courseId: z.string().describe("The ID of the course")
     },
@@ -269,7 +269,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
   // Tool: get-page-content
   server.tool(
     "get-page-content",
-    "Get the content of a specific page by URL slug.",
+    "Get the content of a specific page by URL slug. 🎨 IMPORTANT: Always reference the course styleguide (use get-styleguide) before editing any page content to maintain consistency and professional formatting standards.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')")
@@ -306,7 +306,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
   // Tool: update-page-content
   server.tool(
     "update-page-content",
-    "FULL REPLACEMENT: Update or create a page with completely new content. Use this when you have the entire new HTML body ready, or when creating pages from scratch. For small edits to existing content, use patch-page-content instead. Automatically references course styleguide for consistency.",
+    "🎨 STYLEGUIDE-AWARE FULL REPLACEMENT: Update or create a page with completely new content that automatically follows the course styleguide standards. Use this when you have the entire new HTML body ready, or when creating pages from scratch. For small edits to existing content, use patch-page-content instead. ALWAYS references course styleguide for consistency unless explicitly disabled.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')"),
@@ -457,7 +457,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
   // Tool: patch-page-content
   server.tool(
     "patch-page-content",
-    "SMART EDITING: Make targeted changes to existing page content using LLM assistance. Give natural language instructions (e.g., 'fix typos', 'update office hours', 'add exam warning'). This is STEP 1 of a 2-step process - use apply-page-changes after reviewing the LLM's modifications. For complete content replacement, use update-page-content instead. Automatically references course styleguide for consistency.",
+    "🎨 STYLEGUIDE-COMPLIANT SMART EDITING: Make targeted changes to existing page content using LLM assistance while maintaining course styleguide standards. Give natural language instructions (e.g., 'fix typos', 'update office hours', 'add exam warning'). This is STEP 1 of a 2-step process - use apply-page-changes after reviewing the LLM's modifications. For complete content replacement, use update-page-content instead. ALWAYS references course styleguide for formatting consistency.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')"),
@@ -531,7 +531,7 @@ IMPORTANT: When making changes, ensure all formatting follows the above stylegui
   // Tool: apply-page-changes
   server.tool(
     "apply-page-changes",
-    "STEP 2: Apply LLM-generated page modifications. Use this after patch-page-content shows you the proposed changes. This completes the smart editing workflow by actually updating the Canvas page with the reviewed modifications.",
+    "🎨 STEP 2: Apply styleguide-compliant LLM-generated page modifications. Use this after patch-page-content shows you the proposed changes. This completes the smart editing workflow by actually updating the Canvas page with the reviewed modifications that follow course formatting standards.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')"),
@@ -566,7 +566,7 @@ IMPORTANT: When making changes, ensure all formatting follows the above stylegui
                 `Published: ${updatedPage.published ? 'Yes' : 'No'}`,
                 `Updated At: ${updatedPage.updated_at}`,
                 '',
-                'The changes have been applied successfully.'
+                '🎨 The changes have been applied successfully with course styleguide compliance maintained.'
               ].join('\n')
             }
           ]
