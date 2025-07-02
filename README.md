@@ -103,6 +103,22 @@ Example of how Claude interprets your requests:
 
 ## Installation
 
+### Option 1: NPM Package (Recommended)
+
+The easiest way to use this MCP server is via npm:
+
+```bash
+npm install -g @r-huijts/canvas-mcp
+```
+
+Or use directly with npx (no installation required):
+
+```bash
+npx @r-huijts/canvas-mcp
+```
+
+### Option 2: From Source
+
 1. Clone this repository and install dependencies:
    ```bash
    git clone <repository-url>
@@ -141,6 +157,27 @@ Example of how Claude interprets your requests:
    ```
 
 2. Add the Canvas MCP server configuration:
+
+   ### For NPM Package Installation (Recommended):
+   ```json
+   {
+     "mcpServers": {
+       "canvas": {
+         "command": "npx",
+         "args": [
+           "-y",
+           "@r-huijts/canvas-mcp"
+         ],
+         "env": {
+           "CANVAS_API_TOKEN": "your_token_here",
+           "CANVAS_BASE_URL": "https://your-canvas-instance.com"
+         }
+       }
+     }
+   }
+   ```
+
+   ### For Source Installation:
    ```json
    {
      "mcpServers": {
@@ -159,6 +196,20 @@ Example of how Claude interprets your requests:
    ```
 
 3. Restart Claude Desktop to apply changes
+
+### Installation Notes
+
+**Benefits of NPM Package Installation:**
+- ✅ No need to clone/build source code
+- ✅ Automatic updates available via npm
+- ✅ Simpler configuration
+- ✅ Works across different operating systems
+- ✅ The `-y` flag automatically accepts package installation prompts
+
+**Troubleshooting NPX Issues:**
+- If you encounter permission issues, try running Claude Desktop as administrator (Windows) or with sudo (macOS)
+- On Windows, ensure your PATH includes npm/npx executables
+- For corporate networks, you may need to configure npm proxy settings
 
 ## Available Tools
 
