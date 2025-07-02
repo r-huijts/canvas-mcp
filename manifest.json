@@ -1,0 +1,121 @@
+{
+  "dxt_version": "0.1",
+  "name": "canvas-mcp",
+  "display_name": "Canvas LMS Integration",
+  "version": "1.0.0",
+  "description": "Comprehensive Canvas LMS integration for course management, assignments, pages, students, and rubric analysis",
+  "long_description": "This extension provides full Canvas LMS integration capabilities including course management, assignment creation and grading, page editing with styleguide support, student management with privacy controls, module organization, submission tracking, and comprehensive rubric statistics analysis. Perfect for educators who want to streamline their Canvas workflows directly from Claude Desktop.",
+  "author": {
+    "name": "R.Huijts",
+    "email": "r.huijts@fontys.nl",
+    "url": "https://github.com/r-huijts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/r-huijts/canvas-mcp"
+  },
+  "homepage": "https://github.com/r-huijts/canvas-mcp",
+  "documentation": "https://github.com/r-huijts/canvas-mcp/blob/main/README.md",
+  "support": "https://github.com/r-huijts/canvas-mcp/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "CANVAS_API_TOKEN": "${user_config.api_token}",
+        "CANVAS_BASE_URL": "${user_config.base_url}"
+      }
+    }
+  },
+  "user_config": {
+    "api_token": {
+      "type": "string",
+      "title": "Canvas API Token",
+      "description": "Your Canvas API token. Generate this from Canvas Account > Settings > Approved Integrations > New Access Token",
+      "sensitive": true,
+      "required": true
+    },
+    "base_url": {
+      "type": "string", 
+      "title": "Canvas Base URL",
+      "description": "Your Canvas instance URL (e.g., https://yourschool.instructure.com)",
+      "default": "https://fhict.instructure.com",
+      "required": true
+    }
+  },
+  "tools": [
+    {
+      "name": "list-courses",
+      "description": "List all available courses for the authenticated user"
+    },
+    {
+      "name": "list-assignments", 
+      "description": "Get assignments with submission status for students"
+    },
+    {
+      "name": "create-assignment",
+      "description": "Create new assignments in a course"
+    },
+    {
+      "name": "update-assignment", 
+      "description": "Update existing assignments"
+    },
+    {
+      "name": "list-students",
+      "description": "Get course enrollment with privacy controls"
+    },
+    {
+      "name": "generate-styleguide",
+      "description": "🎨 Create comprehensive Canvas page formatting standards"
+    },
+    {
+      "name": "update-page-content",
+      "description": "Create or update course pages with styleguide compliance"
+    },
+    {
+      "name": "patch-page-content", 
+      "description": "Smart editing of existing pages using natural language"
+    },
+    {
+      "name": "get-rubric-statistics",
+      "description": "Comprehensive rubric analysis with score distributions"
+    },
+    {
+      "name": "list-assignment-submissions",
+      "description": "Track student submission status and comments"
+    },
+    {
+      "name": "grade-submission",
+      "description": "Grade student work with scores and feedback"
+    },
+    {
+      "name": "list-modules",
+      "description": "Course module management and organization"
+    },
+    {
+      "name": "list-sections", 
+      "description": "Course section management"
+    },
+    {
+      "name": "post-announcement",
+      "description": "Post course announcements"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "analyze-rubric-statistics",
+      "description": "Comprehensive rubric analysis with visualizations for formative assessments",
+      "arguments": ["courseName"],
+      "text": "Please analyze the rubric statistics for the course \"{courseName}\". Follow these steps:\n\n1. First, use the list-courses tool to find the course ID for \"{courseName}\".\n\n2. Then, use the list-assignments tool to get all assignments for this course.\n\n3. For each formative assignment that has a due date before today:\n   - Use the get-rubric-statistics tool to get detailed statistics\n   - Include the point distribution to create visualizations\n   - Skip assignments with future due dates\n\n4. Create and analyze two comprehensive visualizations that show all assignments together:\n   a) Grouped Stacked Bar Chart:\n      - X-axis: Criteria names\n      - Y-axis: Percentage of students\n      - Groups: One group of stacked bars per assignment\n      - Bars: Stacked to show score distribution (0-4 points)\n      - Colors: Consistent colors across assignments for each point value\n      - Legend: Include both assignment names and point values\n      \n   b) Grouped Bar Chart:\n      - X-axis: Criteria names\n      - Y-axis: Average score\n      - Groups: One bar per assignment for each criterion\n      - Colors: Different color for each assignment\n      - Include error bars showing standard deviation if available\n\n5. Provide a summary of key insights based on:\n   - Score distributions across criteria and assignments\n   - Progression or patterns between assignments\n   - Common areas of strength or difficulty across assignments\n   - Notable trends or changes between assignments\n   - Specific criteria that show consistent or varying performance\n\nPlease ensure all visualizations are clearly labeled with:\n- Descriptive title (including analysis date)\n- Axis labels\n- Legend showing assignments and score levels\n- Clear distinction between assignments\n- Percentage or count indicators where appropriate"
+    }
+  ],
+  "permissions": [
+    {
+      "type": "network",
+      "description": "Required to connect to Canvas LMS API endpoints"
+    }
+  ]
+} 

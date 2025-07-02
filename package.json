@@ -1,11 +1,17 @@
 {
   "name": "@r-huijts/canvas-mcp",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
-  "main": "build/index.js",
+  "main": "dist/index.js",
+  "bin": {
+    "canvas-mcp": "dist/index.js"
+  },
   "scripts": {
-    "build": "tsc",
-    "start": "node build/index.js"
+    "build": "tsc && chmod +x dist/index.js",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "pack-extension": "npm run build && npx @anthropic-ai/dxt pack",
+    "build-extension": "npm run build && npm run pack-extension"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.3",
@@ -14,6 +20,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@anthropic-ai/dxt": "^0.1.0",
     "@types/node": "^20.17.10",
     "typescript": "^5.7.2"
   }

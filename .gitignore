@@ -6,6 +6,9 @@ node_modules/
 build/
 dist/
 
+# Desktop Extension files
+*.dxt
+
 # Environment variables
 .env
 .env.*
