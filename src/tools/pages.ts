@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { CanvasClient } from "../canvasClient.js";
 
+// Default slug for the Canvas styleguide page
+const DEFAULT_STYLEGUIDE_SLUG = "canvas-styleguide";
+
 // Generate comprehensive Canvas styleguide content
 function generateCanvasStyleguide(includeExamples: boolean = true, customBranding?: string): string {
   return `
@@ -142,13 +145,14 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
     {
       courseId: z.string().describe("The ID of the course where the styleguide will be saved"),
       includeExamples: z.boolean().default(true).describe("Whether to include visual examples of each style element"),
-      customBranding: z.string().optional().describe("Optional custom branding guidelines or color schemes to incorporate")
+      customBranding: z.string().optional().describe("Optional custom branding guidelines or color schemes to incorporate"),
+      slug: z.string().default(DEFAULT_STYLEGUIDE_SLUG).describe("Custom URL slug for the styleguide page")
     },
-    async ({ courseId, includeExamples = true, customBranding }: { courseId: string; includeExamples?: boolean; customBranding?: string }) => {
+    async ({ courseId, includeExamples = true, customBranding, slug = DEFAULT_STYLEGUIDE_SLUG }: { courseId: string; includeExamples?: boolean; customBranding?: string; slug?: string }) => {
       try {
         const styleguideContent = generateCanvasStyleguide(includeExamples, customBranding);
         
-        const styleguide = (await canvas.updateOrCreatePage(courseId, 'canvas-styleguide', {
+        const styleguide = (await canvas.updateOrCreatePage(courseId, slug, {
           wiki_page: {
             title: 'Canvas Course Styleguide',
             body: styleguideContent
@@ -185,11 +189,12 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
     "get-styleguide",
     "Fetch the Canvas styleguide for a course to reference during page creation or editing. This ensures consistency with established design standards.",
     {
-      courseId: z.string().describe("The ID of the course")
+      courseId: z.string().describe("The ID of the course"),
+      slug: z.string().default(DEFAULT_STYLEGUIDE_SLUG).describe("URL slug of the styleguide page")
     },
-    async ({ courseId }: { courseId: string }) => {
+    async ({ courseId, slug = DEFAULT_STYLEGUIDE_SLUG }: { courseId: string; slug?: string }) => {
       try {
-        const styleguide = (await canvas.getPage(courseId, 'canvas-styleguide') as any);
+        const styleguide = (await canvas.getPage(courseId, slug) as any);
         
         return {
           content: [
@@ -324,7 +329,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
         // If creating content from scratch and no body provided, show styleguide for reference
         if (!body && showStyleguidePreview && !ignoreStyleguide) {
           try {
-            const styleguide = (await canvas.getPage(courseId, 'canvas-styleguide') as any);
+            const styleguide = (await canvas.getPage(courseId, DEFAULT_STYLEGUIDE_SLUG) as any);
             return {
               content: [
                 {
@@ -478,7 +483,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
         let styleguideContext = '';
         if (!ignoreStyleguide) {
           try {
-            const styleguide = (await canvas.getPage(courseId, 'canvas-styleguide') as any);
+            const styleguide = (await canvas.getPage(courseId, DEFAULT_STYLEGUIDE_SLUG) as any);
             styleguideContext = `
 
 --- COURSE STYLEGUIDE STANDARDS ---
