@@ -1,5 +1,5 @@
 {
-  "name": "canvas-mcp",
+  "name": "@r-huijts/canvas-mcp",
   "version": "1.0.1",
   "type": "module",
   "main": "build/index.js",
