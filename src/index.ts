@@ -16,6 +16,7 @@ import { registerSectionTools } from './tools/sections.js';
 import { registerSubmissionTools } from './tools/submissions.js';
 import { registerRubricTools } from './tools/rubrics.js';
 import { registerPrompts } from "./tools/prompts.js";
+import { registerQuizTools } from "./tools/quizzes.js";
 // Load environment variables
 dotenv.config();
 
@@ -51,6 +52,7 @@ registerSectionTools(server, canvas);
 registerSubmissionTools(server, canvas);
 registerRubricTools(server, canvas);
 registerPrompts(server, canvas);
+registerQuizTools(server, canvas);
 // Start the server
 async function startServer() {
   try {

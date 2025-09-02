@@ -13,6 +13,7 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
 - Analyze rubric statistics
 - **Manage course modules and module items**
 - **Manage course pages, including content, revisions, and rollbacks**
+- **Manage quizzes, including questions and question groups**
 
 ## Student Data Privacy & Anonymization 🔒
 
@@ -360,6 +361,131 @@ Reverts a page to a previous revision
   - pageUrl: string
   - revisionId: string
 - Returns confirmation and new page state
+
+### Quizzes
+
+#### list-quizzes
+Lists all quizzes in a course
+- Required parameters:
+  - courseId: string
+- Returns a list of quizzes with their details
+
+#### get-quiz
+Fetches metadata for a single quiz
+- Required parameters:
+  - courseId: string
+  - quizId: string
+- Returns the full quiz object
+
+#### create-quiz
+Creates a new quiz in a course
+- Required parameters:
+  - courseId: string
+  - title: string
+- Optional parameters:
+  - description: string
+  - quiz_type: "practice_quiz" | "assignment" | "graded_survey" | "survey"
+  - due_at: string (ISO 8601 format)
+  - points_possible: number
+  - published: boolean
+- Returns the newly created quiz object
+
+#### update-quiz
+Updates an existing quiz
+- Required parameters:
+  - courseId: string
+  - quizId: string
+- Optional parameters: same as create-quiz
+- Returns the updated quiz object
+
+#### delete-quiz
+Deletes a quiz
+- Required parameters:
+  - courseId: string
+  - quizId: string
+- Returns confirmation of deletion
+
+#### list-quiz-questions
+Lists all questions for a quiz
+- Required parameters:
+  - courseId: string
+  - quizId: string
+- Returns a list of question objects
+
+#### get-quiz-question
+Fetches a single quiz question
+- Required parameters:
+  - courseId: string
+  - quizId: string
+  - questionId: string
+- Returns the full question object
+
+#### create-quiz-question
+Creates a new question for a quiz
+- Required parameters:
+  - courseId: string
+  - quizId: string
+  - question: object (containing question_text, question_type, points_possible, etc.)
+- Returns the newly created question object
+
+#### update-quiz-question
+Updates a quiz question
+- Required parameters:
+  - courseId: string
+  - quizId: string
+  - questionId: string
+- Optional parameters:
+  - question: object (with fields to update)
+- Returns the updated question object
+
+#### delete-quiz-question
+Deletes a quiz question
+- Required parameters:
+  - courseId: string
+  - quizId: string
+  - questionId: string
+- Returns confirmation of deletion
+
+#### list-quiz-question-groups
+Lists all question groups for a quiz
+- Required parameters:
+  - courseId: string
+  - quizId: string
+- Returns a list of question group objects
+
+#### get-quiz-question-group
+Fetches a single quiz question group
+- Required parameters:
+  - courseId: string
+  - quizId: string
+  - groupId: string
+- Returns the full question group object
+
+#### create-quiz-question-group
+Creates a new question group for a quiz
+- Required parameters:
+  - courseId: string
+  - quizId: string
+  - quizGroup: object (containing name, pick_count, question_points)
+- Returns the newly created question group object
+
+#### update-quiz-question-group
+Updates a quiz question group
+- Required parameters:
+  - courseId: string
+  - quizId: string
+  - groupId: string
+- Optional parameters:
+  - quizGroup: object (with fields to update)
+- Returns the updated question group object
+
+#### delete-quiz-question-group
+Deletes a quiz question group
+- Required parameters:
+  - courseId: string
+  - quizId: string
+  - groupId: string
+- Returns confirmation of deletion
 
 ## Available Prompts
 
