@@ -113,9 +113,6 @@
     }
   ],
   "permissions": [
-    {
-      "type": "network",
-      "description": "Required to connect to Canvas LMS API endpoints"
-    }
+    "network"
   ]
 } 

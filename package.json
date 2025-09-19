@@ -7,7 +7,7 @@
     "canvas-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc && chmod +x dist/index.js",
+    "build": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "pack-extension": "npm run build && npx @anthropic-ai/dxt pack",
