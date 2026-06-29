@@ -1,8 +1,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { DataAnonymizer } from './anonymizer.js';
+import { SimpleCache } from './cache.js';
+
+// URL fragments whose responses must never be cached (grade/submission data)
+const UNCACHED_PATTERNS = ['/submissions'];
 
 export class CanvasClient {
   private axios: AxiosInstance;
+  private cache = new SimpleCache();
 
   constructor(baseUrl: string, apiToken: string) {
     this.axios = axios.create({
@@ -11,40 +16,65 @@ export class CanvasClient {
     });
   }
 
-  // Generic GET with error handling
+  private isCacheable(url: string): boolean {
+    return !UNCACHED_PATTERNS.some(p => url.includes(p));
+  }
+
+  private cacheKey(url: string, params: any): string {
+    const sorted = Object.keys(params).sort().reduce((acc: any, k) => { acc[k] = params[k]; return acc; }, {});
+    return `${url}\0${JSON.stringify(sorted)}`;
+  }
+
+  private invalidateForWrite(url: string): void {
+    const basePath = url.split('?')[0];
+    this.cache.invalidatePrefix(basePath);
+    const parent = basePath.replace(/\/[^/]+$/, '');
+    if (parent !== basePath) this.cache.invalidatePrefix(parent);
+  }
+
+  // Generic GET with cache and error handling
   async get<T>(url: string, params: any = {}): Promise<T> {
+    const cacheable = this.isCacheable(url);
+    if (cacheable) {
+      const cached = this.cache.get(this.cacheKey(url, params));
+      if (cached !== undefined) return cached as T;
+    }
     try {
       const response = await this.axios.get(url, { params });
+      if (cacheable) this.cache.set(this.cacheKey(url, params), response.data);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
     }
   }
 
-  // Generic POST with error handling
+  // Generic POST with error handling and cache invalidation
   async post<T>(url: string, data: any = {}, params: any = {}): Promise<T> {
     try {
       const response = await this.axios.post(url, data, { params });
+      this.invalidateForWrite(url);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
     }
   }
 
-  // Generic PUT with error handling
+  // Generic PUT with error handling and cache invalidation
   async put<T>(url: string, data: any = {}, params: any = {}): Promise<T> {
     try {
       const response = await this.axios.put(url, data, { params });
+      this.invalidateForWrite(url);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
     }
   }
 
-  // Generic DELETE with error handling
+  // Generic DELETE with error handling and cache invalidation
   async delete<T>(url: string, params: any = {}): Promise<T> {
     try {
       const response = await this.axios.delete(url, { params });
+      this.invalidateForWrite(url);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
