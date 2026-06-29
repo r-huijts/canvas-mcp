@@ -8,14 +8,17 @@ A Model Context Protocol (MCP) server that enables AI assistants like Claude to 
 
 - List active courses and their details
 - Post announcements to courses
-- View course rubrics
+- View, create, update, and delete assignments and assignment groups
+- Grade submissions and post feedback comments
+- View course rubrics and rubric assessment statistics
+- Attach rubrics to assignments
 - Get student enrollment information
-- Access assignment details and submissions
+- Access assignment details and submissions, including file downloads
 - View student submission history and comments
-- Analyze rubric statistics
 - **Manage course modules and module items**
 - **Manage course pages, including content, revisions, and rollbacks**
 - **Manage quizzes, including questions and question groups**
+- **ETag-based response caching** — unchanged data is never re-fetched, reducing API load and token use
 
 ## Desktop Extension Benefits 🎯
 
@@ -263,6 +266,31 @@ Lists all rubrics for a specific course
   - courseId: string
 - Returns rubric titles, IDs, and descriptions
 
+### get-rubric-statistics
+Gets statistics for rubric assessments on an assignment
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+- Optional parameters:
+  - includePointDistribution: boolean (default: true)
+- Returns overall and per-criterion statistics including average, median, min, max, and score distribution
+
+### list-rubric-assessments
+Lists all rubric assessments for an assignment
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+- Optional parameters:
+  - anonymous: boolean (default: true)
+- Returns per-submission rubric scores and criteria ratings
+
+### attach-rubric-to-assignment
+Attaches an existing rubric to an assignment
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+  - rubricId: string
+
 ### list-students
 Gets a complete list of students enrolled in a course
 - Required parameters:
@@ -284,6 +312,61 @@ Gets all assignments in a course with submission status
 - Returns assignment details and submission status
 - **Privacy**: Student submission data is anonymized by default
 
+### get-assignment
+Fetches metadata for a single assignment
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+- Returns due date, points, grading type, submission types, rubric presence, and publish state
+
+### create-assignment
+Creates a new assignment in a course
+- Required parameters:
+  - courseId: string
+- Optional parameters:
+  - name, description, due_at, points_possible, submission_types, published, grading_type, assignment_group_id
+
+### update-assignment
+Updates an existing assignment
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+- Optional parameters: same as create-assignment
+
+### delete-assignment
+Deletes (archives) an assignment from a course
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+
+### list-assignment-groups
+Lists all assignment groups (grade buckets) in a course
+- Required parameters:
+  - courseId: string
+- Returns group name, ID, position, weight, and drop rules
+
+### create-assignment-group
+Creates a new assignment group in a course
+- Required parameters:
+  - courseId: string
+- Optional parameters:
+  - name, position, group_weight, sis_source_id, rules
+
+### bulk-update-assignment-dates
+Updates due/unlock/lock dates for multiple assignments in one call
+- Required parameters:
+  - courseId: string
+  - assignmentDates: array of `{ assignment_id, due_at?, unlock_at?, lock_at? }`
+
+### grade-submission
+Writes a score, grade, rubric assessment, or comment for a student's submission
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+  - userId: string
+- Optional parameters:
+  - posted_grade, score, rubric_assessment, comment
+
 ### list-assignment-submissions
 Gets all student submissions for a specific assignment
 - Required parameters:
@@ -293,6 +376,28 @@ Gets all student submissions for a specific assignment
   - anonymous: boolean (default: true) - Whether to anonymize student names/emails
 - Returns submission details, grades, and comments
 - **Privacy**: Student data is anonymized by default
+
+### get-submission-documents
+Retrieves a student's submission with attachment metadata and optional file content
+- Required parameters:
+  - courseId: string
+  - assignmentId: string
+  - userId: string
+- Optional parameters:
+  - downloadFiles: boolean (default: false)
+  - anonymous: boolean (default: true)
+
+### get-submission-file-info
+Returns metadata for a specific file attached to a submission
+- Required parameters:
+  - fileId: string
+
+### download-submission-file
+Downloads a submission file as text or base64
+- Required parameters:
+  - fileId: string
+- Optional parameters:
+  - forceBase64: boolean (default: false)
 
 ### list-section-submissions
 Gets all student submissions for a specific assignment filtered by section
@@ -322,15 +427,6 @@ Posts a comment on a student's assignment submission
   - studentId: string
   - comment: string
 - Returns confirmation of the posted comment
-
-### get-rubric-statistics
-Gets statistics for rubric assessments on an assignment
-- Required parameters:
-  - courseId: string
-  - assignmentId: string
-- Optional parameters:
-  - includePointDistribution: boolean (default: true)
-- Returns detailed statistics about rubric assessment criteria
 
 ### list-modules
 Lists all modules in a course, optionally including inline items
@@ -392,6 +488,32 @@ Reverts a page to a previous revision
   - pageUrl: string
   - revisionId: string
 - Returns confirmation and new page state
+
+### patch-page-content
+Applies targeted edits to a page using find-and-replace or section-level instructions
+- Required parameters:
+  - courseId: string
+  - pageUrl: string
+  - instructions: string
+- Returns the updated page body
+
+### apply-page-changes
+Applies a set of structured diffs to a page (bulk patch)
+- Required parameters:
+  - courseId: string
+  - pageUrl: string
+  - changes: array of `{ find, replace }` pairs
+
+### generate-styleguide
+Generates a course styleguide page from existing page content
+- Required parameters:
+  - courseId: string
+- Analyses existing pages and writes a `styleguide` page capturing fonts, colours, and layout conventions
+
+### get-styleguide
+Retrieves the styleguide page for a course
+- Required parameters:
+  - courseId: string
 
 ### Quizzes
 
@@ -557,31 +679,40 @@ The server logs errors to stderr. These can be viewed in Claude Desktop's logs o
 node build/index.js 2> debug.log
 ```
 
+## Performance & Caching
+
+The server caches all stable Canvas API responses to avoid redundant fetches and reduce token consumption.
+
+**How it works:**
+
+- On the first request for a resource, the response body and any `ETag` or `Last-Modified` header are stored in memory.
+- On subsequent requests for the same resource, the server sends a conditional GET (`If-None-Match` / `If-Modified-Since`). Canvas returns `304 Not Modified` with no body when the data hasn't changed — saving the bandwidth and tokens that would otherwise be spent re-sending identical content.
+- If Canvas doesn't return validator headers, a 30-minute TTL is used as a fallback.
+- Write operations (`POST`, `PUT`, `DELETE`) automatically evict affected cache entries so the next read always reflects the latest state.
+
+**What is never cached:**
+- Submission and grade data (`/submissions` endpoints) — always fetched live.
+
 ## Development
 
-This MCP server uses the latest Model Context Protocol TypeScript SDK (v1.11.3+) with the new tool registration pattern. Each tool is registered with the server using the `server.tool()` method, which takes the following parameters:
+This MCP server uses the Model Context Protocol TypeScript SDK (v1.29.0). Each tool is registered with `server.tool()` using a five-argument form that includes tool annotations, which hint to MCP clients whether a tool is read-only, destructive, or idempotent:
 
 1. Tool name (string)
 2. Tool description (string)
-3. Input schema (Zod schema or plain object)
-4. Execute function (async function that implements the tool logic)
-
-Here's an example of how a tool is registered:
+3. Input schema (Zod schema)
+4. Tool annotations (`{ readOnlyHint?, destructiveHint?, idempotentHint? }`)
+5. Execute function
 
 ```typescript
 server.tool(
   "list-courses",
-  "List all courses for the authenticated user",
+  "List all active courses for the authenticated user. Returns course name, ID, course code, and term.",
   {},
+  { readOnlyHint: true },
   async () => {
     // Tool implementation...
     return {
-      content: [
-        {
-          type: "text",
-          text: "Tool response..."
-        }
-      ]
+      content: [{ type: "text", text: "..." }]
     };
   }
 );

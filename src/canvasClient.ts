@@ -32,16 +32,36 @@ export class CanvasClient {
     if (parent !== basePath) this.cache.invalidatePrefix(parent);
   }
 
-  // Generic GET with cache and error handling
+  // Generic GET with ETag-based conditional requests and TTL fallback
   async get<T>(url: string, params: any = {}): Promise<T> {
     const cacheable = this.isCacheable(url);
-    if (cacheable) {
-      const cached = this.cache.get(this.cacheKey(url, params));
-      if (cached !== undefined) return cached as T;
+    const key = this.cacheKey(url, params);
+    const cached = cacheable ? this.cache.get(key) : undefined;
+
+    // TTL-only hit (no ETag/Last-Modified) — return without a network call
+    if (cached && !cached.etag && !cached.lastModified) {
+      return cached.value as T;
     }
+
+    // Build conditional GET headers when we have a stored validator
+    const headers: Record<string, string> = {};
+    if (cached?.etag) headers['If-None-Match'] = cached.etag;
+    else if (cached?.lastModified) headers['If-Modified-Since'] = cached.lastModified;
+
     try {
-      const response = await this.axios.get(url, { params });
-      if (cacheable) this.cache.set(this.cacheKey(url, params), response.data);
+      const response = await this.axios.get(url, {
+        params,
+        headers,
+        validateStatus: s => (s >= 200 && s < 300) || s === 304,
+      });
+
+      if (response.status === 304) {
+        return cached!.value as T;
+      }
+
+      if (cacheable) {
+        this.cache.set(key, response.data, response.headers['etag'], response.headers['last-modified']);
+      }
       return response.data;
     } catch (error: any) {
       this.handleError(error);

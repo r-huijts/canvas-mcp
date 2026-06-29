@@ -1,20 +1,28 @@
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+const FALLBACK_TTL_MS = 30 * 60 * 1000; // 30 min, used only when Canvas returns no ETag
+
+export interface CacheEntry {
+  value: any;
+  etag?: string;
+  lastModified?: string;
+  expiresAt: number;
+}
 
 export class SimpleCache {
-  private store = new Map<string, { value: any; expiresAt: number }>();
+  private store = new Map<string, CacheEntry>();
 
-  get(key: string): any {
+  get(key: string): CacheEntry | undefined {
     const entry = this.store.get(key);
     if (!entry) return undefined;
-    if (Date.now() > entry.expiresAt) {
+    // TTL only applies when there are no conditional-GET validators
+    if (!entry.etag && !entry.lastModified && Date.now() > entry.expiresAt) {
       this.store.delete(key);
       return undefined;
     }
-    return entry.value;
+    return entry;
   }
 
-  set(key: string, value: any): void {
-    this.store.set(key, { value, expiresAt: Date.now() + TTL_MS });
+  set(key: string, value: any, etag?: string, lastModified?: string): void {
+    this.store.set(key, { value, etag, lastModified, expiresAt: Date.now() + FALLBACK_TTL_MS });
   }
 
   invalidatePrefix(prefix: string): void {
