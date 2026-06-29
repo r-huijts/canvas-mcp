@@ -182,6 +182,21 @@ export class CanvasClient {
   async updateModulePublish(courseId: string, moduleId: string, data: any) {
     return this.put(`/api/v1/courses/${courseId}/modules/${moduleId}`, data);
   }
+  async createModule(courseId: string, data: any) {
+    return this.post(`/api/v1/courses/${courseId}/modules`, data);
+  }
+  async updateModule(courseId: string, moduleId: string, data: any) {
+    return this.put(`/api/v1/courses/${courseId}/modules/${moduleId}`, data);
+  }
+  async getModuleItem(courseId: string, moduleId: string, itemId: string) {
+    return this.get(`/api/v1/courses/${courseId}/modules/${moduleId}/items/${itemId}`);
+  }
+  async createModuleItem(courseId: string, moduleId: string, data: any) {
+    return this.post(`/api/v1/courses/${courseId}/modules/${moduleId}/items`, data);
+  }
+  async updateModuleItem(courseId: string, moduleId: string, itemId: string, data: any) {
+    return this.put(`/api/v1/courses/${courseId}/modules/${moduleId}/items/${itemId}`, data);
+  }
 
   // --- Pages ---
   async listPages(courseId: string, params: any = {}) {
