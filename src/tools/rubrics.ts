@@ -8,7 +8,7 @@ export function registerRubricTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-rubrics
   server.tool(
     "list-rubrics",
-    "List all rubrics for a specific course",
+    "List all rubrics in a course. Returns rubric title, ID, and description for each rubric.",
     {
       courseId: z.string().describe("The ID of the course")
     },
@@ -173,14 +173,18 @@ export function registerRubricTools(server: McpServer, canvas: CanvasClient) {
     { readOnlyHint: true },
     async ({ courseId, assignmentId, anonymous = true }: { courseId: string; assignmentId: string; anonymous?: boolean }) => {
       try {
-        const rubricAssessments = (await canvas.listRubricAssessments(courseId, assignmentId, { 'include[]': 'rubric_assessment' }, { anonymous }) as any[]);
+        const raw = (await canvas.listRubricAssessments(courseId, assignmentId, { 'include[]': 'rubric_assessment' }, { anonymous }) as any[]);
+        const assessments = raw.map((s: any) => ({
+          id: s.id,
+          user_id: s.user_id,
+          workflow_state: s.workflow_state,
+          score: s.score,
+          attempt: s.attempt,
+          submitted_at: s.submitted_at,
+          rubric_assessment: s.rubric_assessment ?? null,
+        }));
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(rubricAssessments, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify(assessments) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -203,14 +207,9 @@ export function registerRubricTools(server: McpServer, canvas: CanvasClient) {
     { idempotentHint: true },
     async ({ courseId, assignmentId, rubricId }: { courseId: string; assignmentId: string; rubricId: string }) => {
       try {
-        const result = await canvas.attachRubricToAssignment(courseId, assignmentId, rubricId);
+        await canvas.attachRubricToAssignment(courseId, assignmentId, rubricId);
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Rubric ${rubricId} attached to assignment ${assignmentId} in course ${courseId}.` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {

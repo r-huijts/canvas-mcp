@@ -56,14 +56,21 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     { readOnlyHint: true },
     async ({ courseId, quizId }: { courseId: string; quizId: string }) => {
       try {
-        const response = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}`);
+        const q = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}`) as any;
+        const summary = {
+          id: q.id,
+          title: q.title,
+          quiz_type: q.quiz_type,
+          due_at: q.due_at,
+          points_possible: q.points_possible,
+          published: q.published,
+          time_limit: q.time_limit,
+          allowed_attempts: q.allowed_attempts,
+          question_count: q.question_count,
+          workflow_state: q.workflow_state,
+        };
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify(summary) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -91,14 +98,9 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     async (args: any) => {
       const { courseId, ...fields } = args;
       try {
-        const response = await canvas.post(`/api/v1/courses/${courseId}/quizzes`, { quiz: fields });
+        const q = await canvas.post(`/api/v1/courses/${courseId}/quizzes`, { quiz: fields }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Quiz created: id=${q.id}, title="${q.title}", published=${q.published}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -127,14 +129,9 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     async (args: any) => {
       const { courseId, quizId, ...fields } = args;
       try {
-        const response = await canvas.put(`/api/v1/courses/${courseId}/quizzes/${quizId}`, { quiz: fields });
+        const q = await canvas.put(`/api/v1/courses/${courseId}/quizzes/${quizId}`, { quiz: fields }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Quiz updated: id=${q.id}, title="${q.title}", published=${q.published}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -156,14 +153,9 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     { destructiveHint: true },
     async ({ courseId, quizId }: { courseId: string; quizId: string }) => {
       try {
-        const response = await canvas.delete(`/api/v1/courses/${courseId}/quizzes/${quizId}`);
+        await canvas.delete(`/api/v1/courses/${courseId}/quizzes/${quizId}`);
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Quiz ${quizId} deleted from course ${courseId}.` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -223,14 +215,18 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     { readOnlyHint: true },
     async ({ courseId, quizId, questionId }: { courseId: string; quizId: string; questionId: string }) => {
       try {
-        const question = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`);
+        const q = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`) as any;
+        const summary = {
+          id: q.id,
+          question_name: q.question_name,
+          question_text: q.question_text,
+          question_type: q.question_type,
+          points_possible: q.points_possible,
+          position: q.position,
+          answers: q.answers ?? [],
+        };
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(question, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify(summary) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -260,14 +256,9 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     async (args: any) => {
       const { courseId, quizId, question } = args;
       try {
-        const response = await canvas.post(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions`, { question });
+        const q = await canvas.post(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions`, { question }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Question created: id=${q.id}, type="${q.question_type}", points=${q.points_possible}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -298,14 +289,9 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     async (args: any) => {
       const { courseId, quizId, questionId, question } = args;
       try {
-        const response = await canvas.put(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`, { question });
+        const q = await canvas.put(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`, { question }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Question updated: id=${q.id}, type="${q.question_type}", points=${q.points_possible}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -357,14 +343,15 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     { readOnlyHint: true },
     async ({ courseId, quizId }: { courseId: string; quizId: string; }) => {
       try {
-        const groups = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups`);
+        const raw = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups`) as any[];
+        const groups = raw.map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          pick_count: g.pick_count,
+          question_points: g.question_points,
+        }));
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(groups, null, 2)
-            },
-          ],
+          content: [{ type: "text", text: JSON.stringify(groups) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -387,14 +374,9 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     { readOnlyHint: true },
     async ({ courseId, quizId, groupId }: { courseId: string; quizId: string; groupId: string }) => {
       try {
-        const group = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups/${groupId}`);
+        const g = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups/${groupId}`) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(group, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify({ id: g.id, name: g.name, pick_count: g.pick_count, question_points: g.question_points }) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -422,14 +404,9 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     async (args: any) => {
       const { courseId, quizId, quizGroup } = args;
       try {
-        const response = await canvas.post(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups`, { quiz_group: quizGroup });
+        const g = await canvas.post(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups`, { quiz_group: quizGroup }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Question group created: id=${g.id}, name="${g.name}", pick_count=${g.pick_count}, question_points=${g.question_points}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -458,14 +435,9 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     async (args: any) => {
       const { courseId, quizId, groupId, quizGroup } = args;
       try {
-        const response = await canvas.put(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups/${groupId}`, { quiz_group: quizGroup });
+        const g = await canvas.put(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups/${groupId}`, { quiz_group: quizGroup }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Question group updated: id=${g.id}, name="${g.name}", pick_count=${g.pick_count}, question_points=${g.question_points}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {

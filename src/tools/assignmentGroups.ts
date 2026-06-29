@@ -13,14 +13,16 @@ export function registerAssignmentGroupTools(server: McpServer, canvas: CanvasCl
     { readOnlyHint: true },
     async ({ courseId }: { courseId: string }) => {
       try {
-        const response = await canvas.listAssignmentGroups(courseId);
+        const groups = await canvas.listAssignmentGroups(courseId) as any[];
+        const summary = groups.map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          position: g.position,
+          group_weight: g.group_weight,
+          rules: g.rules ?? null,
+        }));
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify(summary) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -48,14 +50,9 @@ export function registerAssignmentGroupTools(server: McpServer, canvas: CanvasCl
     async (args: any) => {
       const { courseId, ...fields } = args;
       try {
-        const response = await canvas.createAssignmentGroup(courseId, { assignment_group: fields });
+        const g = await canvas.createAssignmentGroup(courseId, { assignment_group: fields }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Assignment group created: id=${g.id}, name="${g.name}", position=${g.position}, weight=${g.group_weight}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -84,17 +81,12 @@ export function registerAssignmentGroupTools(server: McpServer, canvas: CanvasCl
       try {
         // Note: A specific client method for this bulk update could be added to CanvasClient
         // For now, using the generic put method directly.
-        const response = await canvas.put(
+        await canvas.put(
           `/api/v1/courses/${courseId}/assignments/bulk_update`,
           { assignment_dates: assignmentDates }
         );
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Bulk date update applied to ${assignmentDates.length} assignment(s) in course ${courseId}.` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {

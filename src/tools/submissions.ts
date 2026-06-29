@@ -15,14 +15,28 @@ export function registerSubmissionTools(server: McpServer, canvas: CanvasClient)
     { readOnlyHint: true },
     async ({ courseId, assignmentId, anonymous = true }: { courseId: string; assignmentId: string; anonymous?: boolean }) => {
       try {
-        const response = await canvas.listAssignmentSubmissions(courseId, assignmentId, {}, { anonymous });
+        const raw = await canvas.listAssignmentSubmissions(courseId, assignmentId, {}, { anonymous });
+        const submissions = (raw as any[]).map((s: any) => ({
+          id: s.id,
+          user_id: s.user_id,
+          submitted_at: s.submitted_at,
+          workflow_state: s.workflow_state,
+          grade: s.grade,
+          score: s.score,
+          attempt: s.attempt,
+          late: s.late || false,
+          missing: s.missing || false,
+          submission_type: s.submission_type,
+          ...(s.submission_comments?.length ? {
+            submission_comments: s.submission_comments.map((c: any) => ({
+              comment: c.comment,
+              author: c.author?.display_name,
+              created_at: c.created_at,
+            }))
+          } : {}),
+        }));
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify(submissions) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -54,14 +68,12 @@ export function registerSubmissionTools(server: McpServer, canvas: CanvasClient)
         if (score !== undefined) payload.score = score;
         if (rubric_assessment !== undefined) payload.rubric_assessment = rubric_assessment;
         if (comment !== undefined) payload.comment = { text_comment: comment };
-        const response = await canvas.gradeSubmission(courseId, assignmentId, userId, payload);
+        const s = await canvas.gradeSubmission(courseId, assignmentId, userId, payload) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{
+            type: "text",
+            text: `Graded: user ${s.user_id}, score ${s.score}, grade ${s.grade}, state ${s.workflow_state}`
+          }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -85,17 +97,15 @@ export function registerSubmissionTools(server: McpServer, canvas: CanvasClient)
     { destructiveHint: false },
     async ({ courseId, assignmentId, userId, comment }: { courseId: string; assignmentId: string; userId: string; comment: string }) => {
       try {
-        const response = await canvas.put(
+        await canvas.put(
           `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}`,
           { comment: { text_comment: comment } }
         );
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{
+            type: "text",
+            text: `Comment posted on submission for user ${userId} (assignment ${assignmentId}).`
+          }]
         };
       } catch (error: any) {
         if (error instanceof Error) {

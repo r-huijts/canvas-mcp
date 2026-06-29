@@ -7,7 +7,7 @@ export function registerCourseTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-courses
   server.tool(
     "list-courses",
-    "List all courses for the authenticated user",
+    "List all active courses for the authenticated user. Returns course name, ID, course code, and term for each course.",
     {},
     { readOnlyHint: true },
     async () => {

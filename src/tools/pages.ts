@@ -142,7 +142,7 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
   // Tool: generate-styleguide
   server.tool(
     "generate-styleguide",
-    "🎨 FOUNDATION TOOL: Generate and save a comprehensive Canvas styleguide page that serves as the formatting foundation for ALL course pages. This creates design standards, accessibility guidelines, and Canvas-specific best practices. ALWAYS create this FIRST before working with any other page content to ensure professional consistency!",
+    "Generate and save a Canvas styleguide page for a course with design standards, accessibility guidelines, and Canvas-specific formatting best practices. Creates the page at the given URL slug (default: canvas-styleguide).",
     {
       courseId: z.string().describe("The ID of the course where the styleguide will be saved"),
       includeExamples: z.boolean().default(true).describe("Whether to include visual examples of each style element"),
@@ -166,13 +166,9 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
             {
               type: "text",
               text: [
-                `✅ Canvas styleguide created successfully!`,
-                `Page URL: ${styleguide.url}`,
+                `Styleguide created: ${styleguide.url}`,
                 `Course ID: ${courseId}`,
-                ``,
-                `This styleguide will now be automatically referenced by all page creation and editing tools to ensure consistent formatting.`,
-                ``,
-                `🔗 View at: ${process.env.CANVAS_BASE_URL || 'https://fhict.instructure.com'}/courses/${courseId}/pages/${styleguide.url}`
+                `URL: ${process.env.CANVAS_BASE_URL || 'https://fhict.instructure.com'}/courses/${courseId}/pages/${styleguide.url}`
               ].join('\n')
             }
           ]
@@ -189,7 +185,7 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
   // Tool: get-styleguide
   server.tool(
     "get-styleguide",
-    "📋 ESSENTIAL: Fetch the Canvas styleguide for a course to reference during page creation or editing. This is CRITICAL for maintaining consistency with established design standards. Always use this before creating or modifying any page content!",
+    "Fetch the Canvas styleguide page for a course. Returns the page title, last-updated timestamp, and full HTML body.",
     {
       courseId: z.string().describe("The ID of the course"),
       slug: z.string().default(DEFAULT_STYLEGUIDE_SLUG).describe("URL slug of the styleguide page")
@@ -204,15 +200,12 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
             {
               type: "text",
               text: [
-                `📋 Canvas Styleguide for Course ${courseId}:`,
                 `Title: ${styleguide.title}`,
                 `Last Updated: ${styleguide.updated_at}`,
                 ``,
                 `--- STYLEGUIDE CONTENT ---`,
                 styleguide.body || 'No styleguide content found',
-                `--- END STYLEGUIDE ---`,
-                ``,
-                `Use this styleguide to ensure all page content follows consistent formatting and design standards.`
+                `--- END STYLEGUIDE ---`
               ].join('\n')
             }
           ]
@@ -229,7 +222,7 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-pages
   server.tool(
     "list-pages",
-    "List all pages in a course (by URL slug). 📋 TIP: Check if a 'canvas-styleguide' page exists - if not, create one with generate-styleguide to ensure consistent formatting across all course pages.",
+    "List all pages in a course. Returns title, URL slug, page ID, and published status for each page.",
     {
       courseId: z.string().describe("The ID of the course")
     },
@@ -273,7 +266,7 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
   // Tool: get-page-content
   server.tool(
     "get-page-content",
-    "Get the content of a specific page by URL slug. 🎨 IMPORTANT: Always reference the course styleguide (use get-styleguide) before editing any page content to maintain consistency and professional formatting standards.",
+    "Get the full content of a page by URL slug. Returns title, URL slug, page ID, published status, last-updated timestamp, and HTML body.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')")
@@ -311,7 +304,7 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
   // Tool: update-page-content
   server.tool(
     "update-page-content",
-    "🎨 STYLEGUIDE-AWARE FULL REPLACEMENT: Update or create a page with completely new content that automatically follows the course styleguide standards. Use this when you have the entire new HTML body ready, or when creating pages from scratch. For small edits to existing content, use patch-page-content instead. ALWAYS references course styleguide for consistency unless explicitly disabled.",
+    "Update or create a page with new content, replacing the entire body. If no body is provided and showStyleguidePreview is true, returns the course styleguide HTML for reference instead of writing. For targeted edits to existing content, use patch-page-content instead.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')"),
@@ -371,13 +364,11 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
             {
               type: "text",
               text: [
-                `✅ Page '${page.url}' updated in course ${courseId}.`,
+                `Page updated: ${page.url}`,
                 `Title: ${page.title}`,
                 `ID: ${page.page_id}`,
                 `Published: ${page.published ? 'Yes' : 'No'}`,
-                `Updated At: ${page.updated_at}`,
-                '',
-                `💡 Tip: Content follows course styleguide standards for consistency.`
+                `Updated At: ${page.updated_at}`
               ].join('\n')
             }
           ]
@@ -465,7 +456,7 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
   // Tool: patch-page-content
   server.tool(
     "patch-page-content",
-    "🎨 STYLEGUIDE-COMPLIANT SMART EDITING: Make targeted changes to existing page content using LLM assistance while maintaining course styleguide standards. Give natural language instructions (e.g., 'fix typos', 'update office hours', 'add exam warning'). This is STEP 1 of a 2-step process - use apply-page-changes after reviewing the LLM's modifications. For complete content replacement, use update-page-content instead. ALWAYS references course styleguide for formatting consistency.",
+    "Fetch a page's current HTML body and return it alongside edit instructions for the model to apply. Does not write to Canvas — follow up with apply-page-changes to persist the result. Optionally includes the course styleguide for formatting reference. For full replacement, use update-page-content instead.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')"),
@@ -501,7 +492,7 @@ ${styleguide.body}
 
 IMPORTANT: When making changes, ensure all formatting follows the above styleguide standards for consistency.`;
           } catch (error) {
-            styleguideContext = '\n\n⚠️ No course styleguide found. Consider creating one with generate-styleguide for consistent formatting.';
+            styleguideContext = '\n\nNo course styleguide found. Create one with generate-styleguide for consistent formatting.';
           }
         }
 
@@ -521,9 +512,7 @@ IMPORTANT: When making changes, ensure all formatting follows the above stylegui
                 '',
                 `Instructions: ${instructions}`,
                 '',
-                'Please modify the above HTML content according to the instructions. Follow the styleguide standards for consistency. Respond with ONLY the modified HTML content that should replace the current body. Preserve the existing structure and formatting unless the instructions specifically ask to change it.',
-                '',
-                'After you provide the modified content, I will update the page automatically.'
+                'Respond with ONLY the modified HTML content. Preserve existing structure and formatting unless the instructions ask to change it. Then call apply-page-changes with the result.'
               ].join('\n')
             }
           ]
@@ -540,7 +529,7 @@ IMPORTANT: When making changes, ensure all formatting follows the above stylegui
   // Tool: apply-page-changes
   server.tool(
     "apply-page-changes",
-    "🎨 STEP 2: Apply styleguide-compliant LLM-generated page modifications. Use this after patch-page-content shows you the proposed changes. This completes the smart editing workflow by actually updating the Canvas page with the reviewed modifications that follow course formatting standards.",
+    "Write revised HTML content to a Canvas page. Accepts the full new body as newContent and saves it. Intended as the second step after patch-page-content.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')"),
@@ -570,13 +559,11 @@ IMPORTANT: When making changes, ensure all formatting follows the above stylegui
             {
               type: "text",
               text: [
-                `✅ Page '${updatedPage.url}' successfully updated in course ${courseId}!`,
+                `Page updated: ${updatedPage.url}`,
                 `Title: ${updatedPage.title}`,
                 `ID: ${updatedPage.page_id}`,
                 `Published: ${updatedPage.published ? 'Yes' : 'No'}`,
-                `Updated At: ${updatedPage.updated_at}`,
-                '',
-                '🎨 The changes have been applied successfully with course styleguide compliance maintained.'
+                `Updated At: ${updatedPage.updated_at}`
               ].join('\n')
             }
           ]

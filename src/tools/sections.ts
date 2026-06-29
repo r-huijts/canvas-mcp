@@ -6,7 +6,7 @@ export function registerSectionTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-sections
   server.tool(
     "list-sections",
-    "Get a list of all sections in a course",
+    "List all sections in a course. Returns section name, ID, SIS ID, and optional date ranges. Set includeStudentCount to include enrollment totals per section.",
     {
       courseId: z.string().describe("The ID of the course"),
       includeStudentCount: z.boolean().default(false).describe("Whether to include the number of students in each section")
