@@ -450,6 +450,93 @@ Toggles the published/unpublished state of a module
   - moduleId: string
 - Returns confirmation of the new published state
 
+### create-module
+Creates a new module in a course
+- Required parameters:
+  - courseId: string
+  - name: string
+- Optional parameters:
+  - position: number (1-based)
+  - unlock_at: string (ISO 8601 date)
+  - require_sequential_progress: boolean
+  - prerequisite_module_ids: string[]
+  - publish_final_grade: boolean
+- Returns the created module's ID, name, position, and published state
+
+### update-module
+Updates an existing module's properties
+- Required parameters:
+  - courseId: string
+  - moduleId: string
+- Optional parameters:
+  - name, position, unlock_at, require_sequential_progress, prerequisite_module_ids, publish_final_grade, published
+- Returns the updated module's ID, name, position, and published state
+
+### delete-module
+Permanently deletes a module and all its items from a course
+- Required parameters:
+  - courseId: string
+  - moduleId: string
+- Returns confirmation of deletion
+
+### get-module-item
+Gets details for a single module item
+- Required parameters:
+  - courseId: string
+  - moduleId: string
+  - itemId: string
+- Returns item ID, type, title, position, content_id, published state, indent, external_url, page_url, and completion requirement
+
+### create-module-item
+Adds a new item to a module
+- Required parameters:
+  - courseId: string
+  - moduleId: string
+  - type: one of File, Page, Discussion, Assignment, Quiz, SubHeader, ExternalUrl, ExternalTool
+- Optional parameters:
+  - content_id, title, position, indent, page_url, external_url, new_tab
+  - completion_requirement_type: must_view | must_contribute | must_submit | must_mark_done
+  - completion_requirement_min_score: number
+- Returns the created item's ID, type, title, and position
+
+### update-module-item
+Updates an existing module item
+- Required parameters:
+  - courseId: string
+  - moduleId: string
+  - itemId: string
+- Optional parameters:
+  - title, position, indent, external_url, new_tab, published
+  - move_to_module_id: string (moves the item to a different module)
+  - completion_requirement_type, completion_requirement_min_score
+- Returns the updated item's ID, type, title, position, and published state
+
+### delete-module-item
+Removes an item from a module
+- Required parameters:
+  - courseId: string
+  - moduleId: string
+  - itemId: string
+- Returns confirmation of deletion
+
+### list-eportfolios
+Lists all ePortfolios belonging to a user
+- Required parameters:
+  - userId: string
+- Returns ePortfolio ID, name, public flag, workflow state, and timestamps
+
+### get-eportfolio
+Gets details for a single ePortfolio
+- Required parameters:
+  - eportfolioId: string
+- Returns ID, user_id, name, public flag, workflow state, spam status, and timestamps
+
+### get-eportfolio-pages
+Lists all pages in an ePortfolio
+- Required parameters:
+  - eportfolioId: string
+- Returns page ID, eportfolio_id, position, name, content, and timestamps
+
 ### list-pages
 Lists all pages in a course by URL slug
 - Required parameters:
