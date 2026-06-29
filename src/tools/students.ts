@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerStudentTools(server: any, canvas: CanvasClient) {
+export function registerStudentTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-students
   server.tool(
     "list-students",
@@ -11,6 +12,7 @@ export function registerStudentTools(server: any, canvas: CanvasClient) {
       includeEmail: z.boolean().default(false).describe("Whether to include student email addresses"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, includeEmail, anonymous = true }: { courseId: string; includeEmail?: boolean; anonymous?: boolean }) => {
       const students: any[] = [];
       let page = 1;

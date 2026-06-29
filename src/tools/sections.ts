@@ -1,15 +1,17 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerSectionTools(server: any, canvas: CanvasClient) {
+export function registerSectionTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-sections
   server.tool(
     "list-sections",
-    "Get a list of all sections in a course",
+    "List all sections in a course. Returns section name, ID, SIS ID, and optional date ranges. Set includeStudentCount to include enrollment totals per section.",
     {
       courseId: z.string().describe("The ID of the course"),
       includeStudentCount: z.boolean().default(false).describe("Whether to include the number of students in each section")
     },
+    { readOnlyHint: true },
     async ({ courseId, includeStudentCount = false }: { courseId: string; includeStudentCount?: boolean }) => {
       let sections: any[] = [];
       let page = 1;
@@ -78,6 +80,7 @@ export function registerSectionTools(server: any, canvas: CanvasClient) {
       includeComments: z.boolean().default(true).describe("Whether to include submission comments"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId, sectionId, includeComments = true, anonymous = true }: { courseId: string; assignmentId: string; sectionId: string; includeComments?: boolean; anonymous?: boolean }) => {
       let submissions: any[] = [];
       let page = 1;

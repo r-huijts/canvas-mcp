@@ -1,16 +1,18 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 import { Rubric, RubricStat } from "../types.js";
 import { calculateMedian } from "../rubricUtils.js";
 
-export function registerRubricTools(server: any, canvas: CanvasClient) {
+export function registerRubricTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-rubrics
   server.tool(
     "list-rubrics",
-    "List all rubrics for a specific course",
+    "List all rubrics in a course. Returns rubric title, ID, and description for each rubric.",
     {
       courseId: z.string().describe("The ID of the course")
     },
+    { readOnlyHint: true },
     async ({ courseId }: { courseId: string }) => {
       try {
         const rubrics = (await canvas.listRubrics(courseId) as any) as Rubric[];
@@ -43,6 +45,7 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
       assignmentId: z.string().describe("The ID of the assignment"),
       includePointDistribution: z.boolean().default(true).describe("Whether to include point distribution for each criterion")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId, includePointDistribution = true }: { courseId: string; assignmentId: string; includePointDistribution?: boolean }) => {
       try {
         const response = (await canvas.getRubricStatistics(courseId, assignmentId, {
@@ -53,15 +56,8 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
         }
 
         const submissions = await canvas.fetchAllPages(
-          // Note: fetchAllPages still uses a direct URI. This could be refactored further
-          // by adding specific fetchAll methods to CanvasClient if desired.
           `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
-          {
-            params: {
-              include: ['rubric_assessment'],
-              per_page: 100
-            }
-          }
+          { include: ['rubric_assessment'], per_page: 100 }
         );
 
         const rubricStats = (response.rubric as any[]).map((criterion: any) => {
@@ -174,16 +170,21 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
       assignmentId: z.string().describe("The ID of the assignment"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId, anonymous = true }: { courseId: string; assignmentId: string; anonymous?: boolean }) => {
       try {
-        const rubricAssessments = (await canvas.listRubricAssessments(courseId, assignmentId, { 'include[]': 'rubric_assessment' }, { anonymous }) as any[]);
+        const raw = (await canvas.listRubricAssessments(courseId, assignmentId, { 'include[]': 'rubric_assessment' }, { anonymous }) as any[]);
+        const assessments = raw.map((s: any) => ({
+          id: s.id,
+          user_id: s.user_id,
+          workflow_state: s.workflow_state,
+          score: s.score,
+          attempt: s.attempt,
+          submitted_at: s.submitted_at,
+          rubric_assessment: s.rubric_assessment ?? null,
+        }));
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(rubricAssessments, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify(assessments) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -203,16 +204,12 @@ export function registerRubricTools(server: any, canvas: CanvasClient) {
       assignmentId: z.string().describe("The ID of the assignment"),
       rubricId: z.string().describe("The ID of the rubric to attach")
     },
+    { idempotentHint: true },
     async ({ courseId, assignmentId, rubricId }: { courseId: string; assignmentId: string; rubricId: string }) => {
       try {
-        const result = await canvas.attachRubricToAssignment(courseId, assignmentId, rubricId);
+        await canvas.attachRubricToAssignment(courseId, assignmentId, rubricId);
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Rubric ${rubricId} attached to assignment ${assignmentId} in course ${courseId}.` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {

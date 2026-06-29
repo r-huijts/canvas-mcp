@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerPrompts(server: any, canvas: CanvasClient) {
+export function registerPrompts(server: McpServer, _canvas: CanvasClient) {
   server.prompt(
     "analyze-rubric-statistics",
     "Analyze rubric statistics for formative assignments in a course",

@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerSubmissionTools(server: any, canvas: CanvasClient) {
+export function registerSubmissionTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-assignment-submissions
   server.tool(
     "list-assignment-submissions",
@@ -11,16 +12,31 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       assignmentId: z.string().describe("The ID of the assignment"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId, anonymous = true }: { courseId: string; assignmentId: string; anonymous?: boolean }) => {
       try {
-        const response = await canvas.listAssignmentSubmissions(courseId, assignmentId, {}, { anonymous });
+        const raw = await canvas.listAssignmentSubmissions(courseId, assignmentId, {}, { anonymous });
+        const submissions = (raw as any[]).map((s: any) => ({
+          id: s.id,
+          user_id: s.user_id,
+          submitted_at: s.submitted_at,
+          workflow_state: s.workflow_state,
+          grade: s.grade,
+          score: s.score,
+          attempt: s.attempt,
+          late: s.late || false,
+          missing: s.missing || false,
+          submission_type: s.submission_type,
+          ...(s.submission_comments?.length ? {
+            submission_comments: s.submission_comments.map((c: any) => ({
+              comment: c.comment,
+              author: c.author?.display_name,
+              created_at: c.created_at,
+            }))
+          } : {}),
+        }));
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify(submissions) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -44,6 +60,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       rubric_assessment: z.any().optional(),
       comment: z.string().optional()
     },
+    { idempotentHint: true },
     async ({ courseId, assignmentId, userId, posted_grade, score, rubric_assessment, comment }: { courseId: string; assignmentId: string; userId: string; posted_grade?: string; score?: number; rubric_assessment?: any; comment?: string }) => {
       try {
         const payload: any = {};
@@ -51,14 +68,12 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
         if (score !== undefined) payload.score = score;
         if (rubric_assessment !== undefined) payload.rubric_assessment = rubric_assessment;
         if (comment !== undefined) payload.comment = { text_comment: comment };
-        const response = await canvas.gradeSubmission(courseId, assignmentId, userId, payload);
+        const s = await canvas.gradeSubmission(courseId, assignmentId, userId, payload) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{
+            type: "text",
+            text: `Graded: user ${s.user_id}, score ${s.score}, grade ${s.grade}, state ${s.workflow_state}`
+          }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -79,21 +94,18 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       userId: z.string().describe("The ID of the student/user"),
       comment: z.string().describe("The comment text to post")
     },
+    { destructiveHint: false },
     async ({ courseId, assignmentId, userId, comment }: { courseId: string; assignmentId: string; userId: string; comment: string }) => {
       try {
-        // Note: A specific client method for this could be added to CanvasClient
-        // For now, using the generic put method directly as the endpoint structure is slightly different.
-        const response = await canvas.put(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}/comments`,
+        await canvas.put(
+          `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}`,
           { comment: { text_comment: comment } }
         );
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{
+            type: "text",
+            text: `Comment posted on submission for user ${userId} (assignment ${assignmentId}).`
+          }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -103,8 +115,6 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       }
     }
   );
-
-  // Tool: get-submission-documents
 
   // Tool: get-submission-documents
   server.tool(
@@ -117,6 +127,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       downloadFiles: z.boolean().default(false).describe("Whether to download the actual file content (default: false, only returns metadata)"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student information (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId, userId, downloadFiles = false, anonymous = true }: { 
       courseId: string; 
       assignmentId: string; 
@@ -190,6 +201,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
     {
       fileId: z.string().describe("The ID of the file to retrieve information for")
     },
+    { readOnlyHint: true },
     async ({ fileId }: { fileId: string }) => {
       try {
         const fileInfo = await canvas.getFileInfo(fileId);
@@ -218,6 +230,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       fileId: z.string().describe("The ID of the file to download"),
       forceBase64: z.boolean().default(false).describe("Force return content as base64 even for text files (default: false)")
     },
+    { readOnlyHint: true },
     async ({ fileId, forceBase64 = false }: { fileId: string; forceBase64?: boolean }) => {
       try {
         const fileData = await canvas.downloadFile(fileId);

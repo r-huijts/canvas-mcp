@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerAssignmentTools(server: any, canvas: CanvasClient) {
+export function registerAssignmentTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-assignments
   server.tool(
     "list-assignments",
@@ -12,6 +13,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       includeSubmissionHistory: z.boolean().default(false).describe("Whether to include submission history details"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails in submission data (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, studentId, includeSubmissionHistory = false, anonymous = true }: { courseId: string; studentId?: string; includeSubmissionHistory?: boolean; anonymous?: boolean }) => {
       let assignments: any[] = [];
       let page = 1;
@@ -108,16 +110,27 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       assignmentId: z.string().describe("The ID of the assignment")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
       try {
-        const response = await canvas.getAssignment(courseId, assignmentId);
+        const a = await canvas.getAssignment(courseId, assignmentId) as any;
+        const summary = {
+          id: a.id,
+          name: a.name,
+          due_at: a.due_at,
+          unlock_at: a.unlock_at,
+          lock_at: a.lock_at,
+          points_possible: a.points_possible,
+          grading_type: a.grading_type,
+          submission_types: a.submission_types,
+          published: a.published,
+          workflow_state: a.workflow_state,
+          assignment_group_id: a.assignment_group_id,
+          has_rubric: !!(a.rubric_id || a.rubric),
+          position: a.position,
+        };
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: JSON.stringify(summary) }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -143,17 +156,13 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       grading_type: z.string().optional(),
       assignment_group_id: z.number().optional(),
     },
+    { destructiveHint: false },
     async (args: any) => {
       const { courseId, ...fields } = args;
       try {
-        const response = await canvas.createAssignment(courseId, { assignment: fields });
+        const a = await canvas.createAssignment(courseId, { assignment: fields }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Assignment created: id=${a.id}, name="${a.name}", points=${a.points_possible}, published=${a.published}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -180,17 +189,13 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       grading_type: z.string().optional(),
       assignment_group_id: z.number().optional(),
     },
+    { idempotentHint: true },
     async (args: any) => {
       const { courseId, assignmentId, ...fields } = args;
       try {
-        const response = await canvas.updateAssignment(courseId, assignmentId, { assignment: fields });
+        const a = await canvas.updateAssignment(courseId, assignmentId, { assignment: fields }) as any;
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Assignment updated: id=${a.id}, name="${a.name}", points=${a.points_possible}, published=${a.published}` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {
@@ -209,16 +214,12 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       assignmentId: z.string().describe("The ID of the assignment")
     },
+    { destructiveHint: true },
     async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
       try {
-        const response = await canvas.delete(`/api/v1/courses/${courseId}/assignments/${assignmentId}`);
+        await canvas.delete(`/api/v1/courses/${courseId}/assignments/${assignmentId}`);
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response, null, 2)
-            }
-          ]
+          content: [{ type: "text", text: `Assignment ${assignmentId} deleted from course ${courseId}.` }]
         };
       } catch (error: any) {
         if (error instanceof Error) {

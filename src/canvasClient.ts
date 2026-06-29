@@ -1,8 +1,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { DataAnonymizer } from './anonymizer.js';
+import { SimpleCache } from './cache.js';
+
+// URL fragments whose responses must never be cached (grade/submission data)
+const UNCACHED_PATTERNS = ['/submissions'];
 
 export class CanvasClient {
   private axios: AxiosInstance;
+  private cache = new SimpleCache();
 
   constructor(baseUrl: string, apiToken: string) {
     this.axios = axios.create({
@@ -11,58 +16,113 @@ export class CanvasClient {
     });
   }
 
-  // Generic GET with error handling
+  private isCacheable(url: string): boolean {
+    return !UNCACHED_PATTERNS.some(p => url.includes(p));
+  }
+
+  private cacheKey(url: string, params: any): string {
+    const sorted = Object.keys(params).sort().reduce((acc: any, k) => { acc[k] = params[k]; return acc; }, {});
+    return `${url}\0${JSON.stringify(sorted)}`;
+  }
+
+  private invalidateForWrite(url: string): void {
+    const basePath = url.split('?')[0];
+    this.cache.invalidatePrefix(basePath);
+    const parent = basePath.replace(/\/[^/]+$/, '');
+    if (parent !== basePath) this.cache.invalidatePrefix(parent);
+  }
+
+  // Generic GET with ETag-based conditional requests and TTL fallback
   async get<T>(url: string, params: any = {}): Promise<T> {
+    const cacheable = this.isCacheable(url);
+    const key = this.cacheKey(url, params);
+    const cached = cacheable ? this.cache.get(key) : undefined;
+
+    // TTL-only hit (no ETag/Last-Modified) — return without a network call
+    if (cached && !cached.etag && !cached.lastModified) {
+      return cached.value as T;
+    }
+
+    // Build conditional GET headers when we have a stored validator
+    const headers: Record<string, string> = {};
+    if (cached?.etag) headers['If-None-Match'] = cached.etag;
+    else if (cached?.lastModified) headers['If-Modified-Since'] = cached.lastModified;
+
     try {
-      const response = await this.axios.get(url, { params });
+      const response = await this.axios.get(url, {
+        params,
+        headers,
+        validateStatus: s => (s >= 200 && s < 300) || s === 304,
+      });
+
+      if (response.status === 304) {
+        return cached!.value as T;
+      }
+
+      if (cacheable) {
+        this.cache.set(key, response.data, response.headers['etag'], response.headers['last-modified']);
+      }
       return response.data;
     } catch (error: any) {
       this.handleError(error);
     }
   }
 
-  // Generic POST with error handling
+  // Generic POST with error handling and cache invalidation
   async post<T>(url: string, data: any = {}, params: any = {}): Promise<T> {
     try {
       const response = await this.axios.post(url, data, { params });
+      this.invalidateForWrite(url);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
     }
   }
 
-  // Generic PUT with error handling
+  // Generic PUT with error handling and cache invalidation
   async put<T>(url: string, data: any = {}, params: any = {}): Promise<T> {
     try {
       const response = await this.axios.put(url, data, { params });
+      this.invalidateForWrite(url);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
     }
   }
 
-  // Generic DELETE with error handling
+  // Generic DELETE with error handling and cache invalidation
   async delete<T>(url: string, params: any = {}): Promise<T> {
     try {
       const response = await this.axios.delete(url, { params });
+      this.invalidateForWrite(url);
       return response.data;
     } catch (error: any) {
       this.handleError(error);
     }
   }
 
-  // Fetch all pages for paginated endpoints
+  private parseLinkHeader(header: string): Record<string, string> {
+    const links: Record<string, string> = {};
+    for (const part of header.split(',')) {
+      const match = part.match(/<([^>]+)>;\s*rel="([^"]+)"/);
+      if (match) links[match[2]] = match[1];
+    }
+    return links;
+  }
+
+  // Fetch all pages for paginated endpoints using Link header
   async fetchAllPages<T>(url: string, params: any = {}): Promise<T[]> {
-    let results: T[] = [];
-    let page = 1;
-    let hasMore = true;
+    const results: T[] = [];
     const per_page = params.per_page || 100;
-    while (hasMore) {
-      const pageParams = { ...params, page, per_page };
-      const data: T[] = await this.get<T[]>(url, pageParams);
+    let page = 1;
+    while (true) {
+      const response = await this.axios.get(url, { params: { ...params, page, per_page } });
+      const data: T[] = response.data;
+      if (!Array.isArray(data) || data.length === 0) break;
       results.push(...data);
-      hasMore = data.length === per_page;
-      page += 1;
+      const linkHeader = response.headers['link'] as string | undefined;
+      if (!linkHeader || !this.parseLinkHeader(linkHeader).next) break;
+      page++;
     }
     return results;
   }
@@ -152,7 +212,7 @@ export class CanvasClient {
     return options.anonymous !== false ? DataAnonymizer.anonymizeSubmissions(data) : data;
   }
   async attachRubricToAssignment(courseId: string, assignmentId: string, rubricId: string) {
-    return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}?rubric_id=${encodeURIComponent(rubricId)}`);
+    return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, {}, { rubric_id: rubricId });
   }
 
   // --- Students ---
