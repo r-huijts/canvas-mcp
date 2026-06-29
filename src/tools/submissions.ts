@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerSubmissionTools(server: any, canvas: CanvasClient) {
+export function registerSubmissionTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-assignment-submissions
   server.tool(
     "list-assignment-submissions",
@@ -11,6 +12,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       assignmentId: z.string().describe("The ID of the assignment"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId, anonymous = true }: { courseId: string; assignmentId: string; anonymous?: boolean }) => {
       try {
         const response = await canvas.listAssignmentSubmissions(courseId, assignmentId, {}, { anonymous });
@@ -44,6 +46,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       rubric_assessment: z.any().optional(),
       comment: z.string().optional()
     },
+    { idempotentHint: true },
     async ({ courseId, assignmentId, userId, posted_grade, score, rubric_assessment, comment }: { courseId: string; assignmentId: string; userId: string; posted_grade?: string; score?: number; rubric_assessment?: any; comment?: string }) => {
       try {
         const payload: any = {};
@@ -79,12 +82,11 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       userId: z.string().describe("The ID of the student/user"),
       comment: z.string().describe("The comment text to post")
     },
+    { destructiveHint: false },
     async ({ courseId, assignmentId, userId, comment }: { courseId: string; assignmentId: string; userId: string; comment: string }) => {
       try {
-        // Note: A specific client method for this could be added to CanvasClient
-        // For now, using the generic put method directly as the endpoint structure is slightly different.
         const response = await canvas.put(
-          `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}/comments`,
+          `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}`,
           { comment: { text_comment: comment } }
         );
         return {
@@ -105,8 +107,6 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
   );
 
   // Tool: get-submission-documents
-
-  // Tool: get-submission-documents
   server.tool(
     "get-submission-documents",
     "Retrieve a student's submission with attachment metadata and optional file downloads. Returns submission details, file information, and optionally the actual file content.",
@@ -117,6 +117,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       downloadFiles: z.boolean().default(false).describe("Whether to download the actual file content (default: false, only returns metadata)"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student information (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId, userId, downloadFiles = false, anonymous = true }: { 
       courseId: string; 
       assignmentId: string; 
@@ -190,6 +191,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
     {
       fileId: z.string().describe("The ID of the file to retrieve information for")
     },
+    { readOnlyHint: true },
     async ({ fileId }: { fileId: string }) => {
       try {
         const fileInfo = await canvas.getFileInfo(fileId);
@@ -218,6 +220,7 @@ export function registerSubmissionTools(server: any, canvas: CanvasClient) {
       fileId: z.string().describe("The ID of the file to download"),
       forceBase64: z.boolean().default(false).describe("Force return content as base64 even for text files (default: false)")
     },
+    { readOnlyHint: true },
     async ({ fileId, forceBase64 = false }: { fileId: string; forceBase64?: boolean }) => {
       try {
         const fileData = await canvas.downloadFile(fileId);

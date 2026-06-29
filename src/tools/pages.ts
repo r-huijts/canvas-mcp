@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
 // Default slug for the Canvas styleguide page
@@ -137,7 +138,7 @@ function generateCanvasStyleguide(includeExamples: boolean = true, customBrandin
   `.trim();
 }
 
-export function registerPageTools(server: any, canvas: CanvasClient) {
+export function registerPageTools(server: McpServer, canvas: CanvasClient) {
   // Tool: generate-styleguide
   server.tool(
     "generate-styleguide",
@@ -148,6 +149,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
       customBranding: z.string().optional().describe("Optional custom branding guidelines or color schemes to incorporate"),
       slug: z.string().default(DEFAULT_STYLEGUIDE_SLUG).describe("Custom URL slug for the styleguide page")
     },
+    { idempotentHint: true },
     async ({ courseId, includeExamples = true, customBranding, slug = DEFAULT_STYLEGUIDE_SLUG }: { courseId: string; includeExamples?: boolean; customBranding?: string; slug?: string }) => {
       try {
         const styleguideContent = generateCanvasStyleguide(includeExamples, customBranding);
@@ -192,6 +194,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       slug: z.string().default(DEFAULT_STYLEGUIDE_SLUG).describe("URL slug of the styleguide page")
     },
+    { readOnlyHint: true },
     async ({ courseId, slug = DEFAULT_STYLEGUIDE_SLUG }: { courseId: string; slug?: string }) => {
       try {
         const styleguide = (await canvas.getPage(courseId, slug) as any);
@@ -230,6 +233,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
     {
       courseId: z.string().describe("The ID of the course")
     },
+    { readOnlyHint: true },
     async ({ courseId }: { courseId: string }) => {
       let pages: any[] = [];
       let page = 1;
@@ -274,6 +278,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')")
     },
+    { readOnlyHint: true },
     async ({ courseId, pageUrl }: { courseId: string; pageUrl: string }) => {
       try {
         const page = (await canvas.getPage(courseId, pageUrl) as any);
@@ -316,6 +321,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
       ignoreStyleguide: z.boolean().default(false).describe("Skip styleguide reference (not recommended)"),
       showStyleguidePreview: z.boolean().default(true).describe("Show styleguide preview when creating content from scratch")
     },
+    { idempotentHint: true },
     async ({ courseId, pageUrl, title, body, editingRoles, ignoreStyleguide = false, showStyleguidePreview = true }: { 
       courseId: string; 
       pageUrl: string; 
@@ -393,6 +399,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')")
     },
+    { readOnlyHint: true },
     async ({ courseId, pageUrl }: { courseId: string; pageUrl: string }) => {
       try {
         const revisions = (await canvas.listPageRevisions(courseId, pageUrl) as any[]);
@@ -428,6 +435,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')"),
       revisionId: z.string().describe("The ID of the revision to revert to")
     },
+    { idempotentHint: true },
     async ({ courseId, pageUrl, revisionId }: { courseId: string; pageUrl: string; revisionId: string }) => {
       try {
         const page = (await canvas.revertPageRevision(courseId, pageUrl, revisionId) as any);
@@ -466,6 +474,7 @@ export function registerPageTools(server: any, canvas: CanvasClient) {
       editingRoles: z.string().optional().describe("Comma-separated roles allowed to edit (optional)"),
       ignoreStyleguide: z.boolean().default(false).describe("Skip styleguide reference (not recommended)")
     },
+    { readOnlyHint: true },
     async ({ courseId, pageUrl, instructions, title, editingRoles, ignoreStyleguide = false }: { 
       courseId: string; 
       pageUrl: string; 
@@ -539,6 +548,7 @@ IMPORTANT: When making changes, ensure all formatting follows the above stylegui
       title: z.string().optional().describe("New title for the page (optional)"),
       editingRoles: z.string().optional().describe("Comma-separated roles allowed to edit (optional)")
     },
+    { idempotentHint: true },
     async ({ courseId, pageUrl, newContent, title, editingRoles }: { 
       courseId: string; 
       pageUrl: string; 

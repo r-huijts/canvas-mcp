@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerAssignmentGroupTools(server: any, canvas: CanvasClient) {
+export function registerAssignmentGroupTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-assignment-groups
   server.tool(
     "list-assignment-groups",
@@ -9,6 +10,7 @@ export function registerAssignmentGroupTools(server: any, canvas: CanvasClient) 
     {
       courseId: z.string().describe("The ID of the course")
     },
+    { readOnlyHint: true },
     async ({ courseId }: { courseId: string }) => {
       try {
         const response = await canvas.listAssignmentGroups(courseId);
@@ -42,6 +44,7 @@ export function registerAssignmentGroupTools(server: any, canvas: CanvasClient) 
       integration_data: z.any().optional(),
       rules: z.any().optional()
     },
+    { destructiveHint: false },
     async (args: any) => {
       const { courseId, ...fields } = args;
       try {
@@ -76,6 +79,7 @@ export function registerAssignmentGroupTools(server: any, canvas: CanvasClient) 
         lock_at: z.string().optional().describe("New lock date (ISO 8601)")
       })).describe("Array of assignment date updates")
     },
+    { idempotentHint: true },
     async ({ courseId, assignmentDates }: { courseId: string; assignmentDates: any[] }) => {
       try {
         // Note: A specific client method for this bulk update could be added to CanvasClient

@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerAssignmentTools(server: any, canvas: CanvasClient) {
+export function registerAssignmentTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-assignments
   server.tool(
     "list-assignments",
@@ -12,6 +13,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       includeSubmissionHistory: z.boolean().default(false).describe("Whether to include submission history details"),
       anonymous: z.boolean().default(true).describe("Whether to anonymize student names and emails in submission data (default: true for privacy)")
     },
+    { readOnlyHint: true },
     async ({ courseId, studentId, includeSubmissionHistory = false, anonymous = true }: { courseId: string; studentId?: string; includeSubmissionHistory?: boolean; anonymous?: boolean }) => {
       let assignments: any[] = [];
       let page = 1;
@@ -108,6 +110,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       assignmentId: z.string().describe("The ID of the assignment")
     },
+    { readOnlyHint: true },
     async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
       try {
         const response = await canvas.getAssignment(courseId, assignmentId);
@@ -143,6 +146,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       grading_type: z.string().optional(),
       assignment_group_id: z.number().optional(),
     },
+    { destructiveHint: false },
     async (args: any) => {
       const { courseId, ...fields } = args;
       try {
@@ -180,6 +184,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       grading_type: z.string().optional(),
       assignment_group_id: z.number().optional(),
     },
+    { idempotentHint: true },
     async (args: any) => {
       const { courseId, assignmentId, ...fields } = args;
       try {
@@ -209,6 +214,7 @@ export function registerAssignmentTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       assignmentId: z.string().describe("The ID of the assignment")
     },
+    { destructiveHint: true },
     async ({ courseId, assignmentId }: { courseId: string; assignmentId: string }) => {
       try {
         const response = await canvas.delete(`/api/v1/courses/${courseId}/assignments/${assignmentId}`);

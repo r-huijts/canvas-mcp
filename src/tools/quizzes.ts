@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerQuizTools(server: any, canvas: CanvasClient) {
+export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-quizzes
   server.tool(
     "list-quizzes",
@@ -9,6 +10,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
     {
       courseId: z.string().describe("The ID of the course"),
     },
+    { readOnlyHint: true },
     async ({ courseId }: { courseId: string; }) => {
       try {
         const quizzes: any[] = await canvas.get(`/api/v1/courses/${courseId}/quizzes`);
@@ -51,6 +53,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       quizId: z.string().describe("The ID of the quiz")
     },
+    { readOnlyHint: true },
     async ({ courseId, quizId }: { courseId: string; quizId: string }) => {
       try {
         const response = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}`);
@@ -84,6 +87,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       points_possible: z.number().optional().describe("The point value of the quiz"),
       published: z.boolean().optional().describe("Whether the quiz is published"),
     },
+    { destructiveHint: false },
     async (args: any) => {
       const { courseId, ...fields } = args;
       try {
@@ -119,6 +123,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       points_possible: z.number().optional().describe("The point value of the quiz"),
       published: z.boolean().optional().describe("Whether the quiz is published"),
     },
+    { idempotentHint: true },
     async (args: any) => {
       const { courseId, quizId, ...fields } = args;
       try {
@@ -148,6 +153,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       quizId: z.string().describe("The ID of the quiz"),
     },
+    { destructiveHint: true },
     async ({ courseId, quizId }: { courseId: string; quizId: string }) => {
       try {
         const response = await canvas.delete(`/api/v1/courses/${courseId}/quizzes/${quizId}`);
@@ -176,6 +182,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       quizId: z.string().describe("The ID of the quiz"),
     },
+    { readOnlyHint: true },
     async ({ courseId, quizId }: { courseId: string; quizId: string; }) => {
       try {
         const questions: any[] = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions`);
@@ -213,6 +220,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       quizId: z.string().describe("The ID of the quiz"),
       questionId: z.string().describe("The ID of the question"),
     },
+    { readOnlyHint: true },
     async ({ courseId, quizId, questionId }: { courseId: string; quizId: string; questionId: string }) => {
       try {
         const question = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`);
@@ -248,6 +256,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
         answers: z.array(z.any()).optional(),
       }).describe("The question object"),
     },
+    { destructiveHint: false },
     async (args: any) => {
       const { courseId, quizId, question } = args;
       try {
@@ -285,6 +294,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
         answers: z.array(z.any()).optional(),
       }).describe("The question object"),
     },
+    { idempotentHint: true },
     async (args: any) => {
       const { courseId, quizId, questionId, question } = args;
       try {
@@ -315,6 +325,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       quizId: z.string().describe("The ID of the quiz"),
       questionId: z.string().describe("The ID of the question"),
     },
+    { destructiveHint: true },
     async ({ courseId, quizId, questionId }: { courseId: string; quizId: string; questionId: string }) => {
       try {
         await canvas.delete(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`);
@@ -343,6 +354,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       quizId: z.string().describe("The ID of the quiz"),
     },
+    { readOnlyHint: true },
     async ({ courseId, quizId }: { courseId: string; quizId: string; }) => {
       try {
         const groups = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups`);
@@ -372,6 +384,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       quizId: z.string().describe("The ID of the quiz"),
       groupId: z.string().describe("The ID of the question group"),
     },
+    { readOnlyHint: true },
     async ({ courseId, quizId, groupId }: { courseId: string; quizId: string; groupId: string }) => {
       try {
         const group = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups/${groupId}`);
@@ -405,6 +418,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
         question_points: z.number(),
       }).describe("The quiz group object"),
     },
+    { destructiveHint: false },
     async (args: any) => {
       const { courseId, quizId, quizGroup } = args;
       try {
@@ -440,6 +454,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
         question_points: z.number().optional(),
       }).describe("The quiz group object"),
     },
+    { idempotentHint: true },
     async (args: any) => {
       const { courseId, quizId, groupId, quizGroup } = args;
       try {
@@ -470,6 +485,7 @@ export function registerQuizTools(server: any, canvas: CanvasClient) {
       quizId: z.string().describe("The ID of the quiz"),
       groupId: z.string().describe("The ID of the group"),
     },
+    { destructiveHint: true },
     async ({ courseId, quizId, groupId }: { courseId: string; quizId: string; groupId: string }) => {
       try {
         await canvas.delete(`/api/v1/courses/${courseId}/quizzes/${quizId}/groups/${groupId}`);

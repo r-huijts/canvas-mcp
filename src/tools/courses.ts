@@ -1,13 +1,15 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
-import { Course, Rubric } from "../types.js";
+import { Course } from "../types.js";
 
-export function registerCourseTools(server: any, canvas: CanvasClient) {
+export function registerCourseTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-courses
   server.tool(
     "list-courses",
     "List all courses for the authenticated user",
     {},
+    { readOnlyHint: true },
     async () => {
       try {
         const courses: Course[] = (await canvas.listCourses({
@@ -51,6 +53,7 @@ export function registerCourseTools(server: any, canvas: CanvasClient) {
       title: z.string().describe("The title of the announcement"),
       message: z.string().describe("The content of the announcement")
     },
+    { destructiveHint: false },
     async ({ courseId, title, message }: { courseId: string; title: string; message: string }) => {
       try {
         await canvas.postAnnouncement(courseId, {

@@ -51,18 +51,28 @@ export class CanvasClient {
     }
   }
 
-  // Fetch all pages for paginated endpoints
+  private parseLinkHeader(header: string): Record<string, string> {
+    const links: Record<string, string> = {};
+    for (const part of header.split(',')) {
+      const match = part.match(/<([^>]+)>;\s*rel="([^"]+)"/);
+      if (match) links[match[2]] = match[1];
+    }
+    return links;
+  }
+
+  // Fetch all pages for paginated endpoints using Link header
   async fetchAllPages<T>(url: string, params: any = {}): Promise<T[]> {
-    let results: T[] = [];
-    let page = 1;
-    let hasMore = true;
+    const results: T[] = [];
     const per_page = params.per_page || 100;
-    while (hasMore) {
-      const pageParams = { ...params, page, per_page };
-      const data: T[] = await this.get<T[]>(url, pageParams);
+    let page = 1;
+    while (true) {
+      const response = await this.axios.get(url, { params: { ...params, page, per_page } });
+      const data: T[] = response.data;
+      if (!Array.isArray(data) || data.length === 0) break;
       results.push(...data);
-      hasMore = data.length === per_page;
-      page += 1;
+      const linkHeader = response.headers['link'] as string | undefined;
+      if (!linkHeader || !this.parseLinkHeader(linkHeader).next) break;
+      page++;
     }
     return results;
   }
@@ -152,7 +162,7 @@ export class CanvasClient {
     return options.anonymous !== false ? DataAnonymizer.anonymizeSubmissions(data) : data;
   }
   async attachRubricToAssignment(courseId: string, assignmentId: string, rubricId: string) {
-    return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}?rubric_id=${encodeURIComponent(rubricId)}`);
+    return this.put(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, {}, { rubric_id: rubricId });
   }
 
   // --- Students ---

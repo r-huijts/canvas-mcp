@@ -1,6 +1,6 @@
 {
   "name": "@r-huijts/canvas-mcp",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -14,7 +14,7 @@
     "build-extension": "npm run build && npm run pack-extension"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.3",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "axios": "^1.6.7",
     "dotenv": "^16.4.5",
     "zod": "^3.24.1"

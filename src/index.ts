@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import * as dotenv from "dotenv";
-import { CanvasConfig, Course, Rubric } from './types.js';
+import { CanvasConfig } from './types.js';
 import { CanvasClient } from './canvasClient.js';
 import { registerCourseTools } from './tools/courses.js';
 import { registerStudentTools } from './tools/students.js';

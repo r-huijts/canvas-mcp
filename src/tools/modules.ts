@@ -1,7 +1,8 @@
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CanvasClient } from "../canvasClient.js";
 
-export function registerModuleTools(server: any, canvas: CanvasClient) {
+export function registerModuleTools(server: McpServer, canvas: CanvasClient) {
   // Tool: list-modules
   server.tool(
     "list-modules",
@@ -10,6 +11,7 @@ export function registerModuleTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       includeItems: z.boolean().default(false).describe("Whether to include inline items for each module")
     },
+    { readOnlyHint: true },
     async ({ courseId, includeItems }: { courseId: string; includeItems?: boolean }) => {
       let modules: any[] = [];
       let page = 1;
@@ -67,6 +69,7 @@ export function registerModuleTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       moduleId: z.string().describe("The ID of the module")
     },
+    { readOnlyHint: true },
     async ({ courseId, moduleId }: { courseId: string; moduleId: string }) => {
       let items: any[] = [];
       let page = 1;
@@ -114,6 +117,7 @@ export function registerModuleTools(server: any, canvas: CanvasClient) {
       courseId: z.string().describe("The ID of the course"),
       moduleId: z.string().describe("The ID of the module")
     },
+    { destructiveHint: false },
     async ({ courseId, moduleId }: { courseId: string; moduleId: string }) => {
       try {
         const current = (await canvas.getModule(courseId, moduleId) as any);
