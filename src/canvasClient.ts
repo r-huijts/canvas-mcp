@@ -163,7 +163,7 @@ export class CanvasClient {
 
   // --- Assignment Groups ---
   async listAssignmentGroups(courseId: string) {
-    return this.get(`/api/v1/courses/${courseId}/assignment_groups`);
+    return this.get(`/api/v1/courses/${courseId}/assignment_groups`, { per_page: 100 });
   }
   async createAssignmentGroup(courseId: string, data: any) {
     return this.post(`/api/v1/courses/${courseId}/assignment_groups`, data);
@@ -171,10 +171,10 @@ export class CanvasClient {
 
   // --- Modules ---
   async listModules(courseId: string, params: any = {}) {
-    return this.get(`/api/v1/courses/${courseId}/modules`, params);
+    return this.get(`/api/v1/courses/${courseId}/modules`, { per_page: 100, ...params });
   }
   async listModuleItems(courseId: string, moduleId: string, params: any = {}) {
-    return this.get(`/api/v1/courses/${courseId}/modules/${moduleId}/items`, params);
+    return this.get(`/api/v1/courses/${courseId}/modules/${moduleId}/items`, { per_page: 100, ...params });
   }
   async getModule(courseId: string, moduleId: string) {
     return this.get(`/api/v1/courses/${courseId}/modules/${moduleId}`);
@@ -185,7 +185,7 @@ export class CanvasClient {
 
   // --- Pages ---
   async listPages(courseId: string, params: any = {}) {
-    return this.get(`/api/v1/courses/${courseId}/pages`, params);
+    return this.get(`/api/v1/courses/${courseId}/pages`, { per_page: 100, ...params });
   }
   async getPage(courseId: string, pageUrl: string) {
     return this.get(`/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`);
@@ -208,7 +208,7 @@ export class CanvasClient {
     return this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, params);
   }
   async listRubricAssessments(courseId: string, assignmentId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
-    const data = await this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params) as any[];
+    const data = await this.fetchAllPages<any>(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params);
     return options.anonymous !== false ? DataAnonymizer.anonymizeSubmissions(data) : data;
   }
   async attachRubricToAssignment(courseId: string, assignmentId: string, rubricId: string) {
@@ -217,7 +217,7 @@ export class CanvasClient {
 
   // --- Students ---
   async listStudents(courseId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
-    const data = await this.get(`/api/v1/courses/${courseId}/users`, params) as any[];
+    const data = await this.fetchAllPages<any>(`/api/v1/courses/${courseId}/users`, params);
     return options.anonymous !== false ? DataAnonymizer.anonymizeUsers(data) : data;
   }
 
@@ -229,13 +229,13 @@ export class CanvasClient {
     return this.get(`/api/v1/courses/${courseId}/sections/${sectionId}`);
   }
   async listSectionAssignmentSubmissions(sectionId: string, assignmentId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
-    const data = await this.get(`/api/v1/sections/${sectionId}/assignments/${assignmentId}/submissions`, params) as any[];
+    const data = await this.fetchAllPages<any>(`/api/v1/sections/${sectionId}/assignments/${assignmentId}/submissions`, params);
     return options.anonymous !== false ? DataAnonymizer.anonymizeSubmissions(data) : data;
   }
 
   // --- Submissions ---
   async listAssignmentSubmissions(courseId: string, assignmentId: string, params: any = {}, options: { anonymous?: boolean } = {}) {
-    const data = await this.get(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params) as any[];
+    const data = await this.fetchAllPages<any>(`/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`, params);
     return options.anonymous !== false ? DataAnonymizer.anonymizeSubmissions(data) : data;
   }
   async gradeSubmission(courseId: string, assignmentId: string, userId: string, data: any) {
