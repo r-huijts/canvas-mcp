@@ -2,7 +2,7 @@
   "mcpb_version": "0.1",
   "name": "canvas-mcp",
   "display_name": "Canvas LMS Integration",
-  "version": "1.0.8",
+  "version": "1.2.0",
   "description": "Comprehensive Canvas LMS integration for course management, assignments, pages, students, and rubric analysis",
   "long_description": "This extension provides full Canvas LMS integration capabilities including course management, assignment creation and grading, page editing with styleguide support, student management with privacy controls, module organization, submission tracking, and comprehensive rubric statistics analysis. Perfect for educators who want to streamline their Canvas workflows directly from Claude Desktop.",
   "author": {
@@ -47,62 +47,66 @@
     }
   },
   "tools": [
-    {
-      "name": "list-courses",
-      "description": "List all available courses for the authenticated user"
-    },
-    {
-      "name": "list-assignments", 
-      "description": "Get assignments with submission status for students"
-    },
-    {
-      "name": "create-assignment",
-      "description": "Create new assignments in a course"
-    },
-    {
-      "name": "update-assignment", 
-      "description": "Update existing assignments"
-    },
-    {
-      "name": "list-students",
-      "description": "Get course enrollment with privacy controls"
-    },
-    {
-      "name": "generate-styleguide",
-      "description": "🎨 Create comprehensive Canvas page formatting standards"
-    },
-    {
-      "name": "update-page-content",
-      "description": "Create or update course pages with styleguide compliance"
-    },
-    {
-      "name": "patch-page-content", 
-      "description": "Smart editing of existing pages using natural language"
-    },
-    {
-      "name": "get-rubric-statistics",
-      "description": "Comprehensive rubric analysis with score distributions"
-    },
-    {
-      "name": "list-assignment-submissions",
-      "description": "Track student submission status and comments"
-    },
-    {
-      "name": "grade-submission",
-      "description": "Grade student work with scores and feedback"
-    },
-    {
-      "name": "list-modules",
-      "description": "Course module management and organization"
-    },
-    {
-      "name": "list-sections", 
-      "description": "Course section management"
-    },
-    {
-      "name": "post-announcement",
-      "description": "Post course announcements"
-    }
+    { "name": "list-courses", "description": "List all active courses for the authenticated user" },
+    { "name": "post-announcement", "description": "Post an announcement to a specific course" },
+    { "name": "list-students", "description": "Get course enrollment with privacy controls" },
+    { "name": "list-assignments", "description": "Get assignments with submission status for students" },
+    { "name": "get-assignment", "description": "Fetch metadata for a single assignment" },
+    { "name": "create-assignment", "description": "Create new assignments in a course" },
+    { "name": "update-assignment", "description": "Update existing assignments" },
+    { "name": "delete-assignment", "description": "Delete (archive) an assignment" },
+    { "name": "list-assignment-groups", "description": "List assignment groups (grade buckets) in a course" },
+    { "name": "create-assignment-group", "description": "Create a new assignment group" },
+    { "name": "bulk-update-assignment-dates", "description": "Bulk update due/unlock/lock dates for assignments" },
+    { "name": "list-assignment-submissions", "description": "Track student submission status and comments" },
+    { "name": "grade-submission", "description": "Grade student work with scores and feedback" },
+    { "name": "post-submission-comment", "description": "Post feedback as a comment on a submission" },
+    { "name": "get-submission-documents", "description": "Retrieve submission attachments and optional file content" },
+    { "name": "get-submission-file-info", "description": "Get metadata for a submission file" },
+    { "name": "download-submission-file", "description": "Download a submission file as text or base64" },
+    { "name": "list-sections", "description": "List course sections with optional enrollment counts" },
+    { "name": "list-section-submissions", "description": "Get submissions filtered by section" },
+    { "name": "list-rubrics", "description": "List all rubrics in a course" },
+    { "name": "get-rubric-statistics", "description": "Rubric analysis with score distributions" },
+    { "name": "list-rubric-assessments", "description": "List rubric assessments for an assignment" },
+    { "name": "attach-rubric-to-assignment", "description": "Attach a rubric to an assignment" },
+    { "name": "list-modules", "description": "Course module management and organization" },
+    { "name": "list-module-items", "description": "List items in a module" },
+    { "name": "toggle-module-publish", "description": "Publish or unpublish a module" },
+    { "name": "create-module", "description": "Create a new module" },
+    { "name": "update-module", "description": "Update module properties" },
+    { "name": "delete-module", "description": "Delete a module and its items" },
+    { "name": "get-module-item", "description": "Get details for a module item" },
+    { "name": "create-module-item", "description": "Add an item to a module" },
+    { "name": "update-module-item", "description": "Update a module item" },
+    { "name": "delete-module-item", "description": "Remove an item from a module" },
+    { "name": "list-pages", "description": "List course pages by URL slug" },
+    { "name": "get-page-content", "description": "Get page HTML content" },
+    { "name": "update-page-content", "description": "Create or update course pages" },
+    { "name": "list-page-revisions", "description": "List page revision history" },
+    { "name": "revert-page-revision", "description": "Revert a page to a previous revision" },
+    { "name": "patch-page-content", "description": "Smart editing of pages using natural language" },
+    { "name": "apply-page-changes", "description": "Write revised HTML to a Canvas page" },
+    { "name": "generate-styleguide", "description": "Create Canvas page formatting standards" },
+    { "name": "get-styleguide", "description": "Fetch the course styleguide page" },
+    { "name": "list-quizzes", "description": "List all quizzes in a course" },
+    { "name": "get-quiz", "description": "Fetch metadata for a single quiz" },
+    { "name": "create-quiz", "description": "Create a new quiz" },
+    { "name": "update-quiz", "description": "Update an existing quiz" },
+    { "name": "delete-quiz", "description": "Delete a quiz" },
+    { "name": "list-quiz-questions", "description": "List questions in a quiz" },
+    { "name": "get-quiz-question", "description": "Fetch a single quiz question" },
+    { "name": "create-quiz-question", "description": "Create a quiz question" },
+    { "name": "update-quiz-question", "description": "Update a quiz question" },
+    { "name": "delete-quiz-question", "description": "Delete a quiz question" },
+    { "name": "list-quiz-question-groups", "description": "List question groups in a quiz" },
+    { "name": "get-quiz-question-group", "description": "Fetch a quiz question group" },
+    { "name": "create-quiz-question-group", "description": "Create a quiz question group" },
+    { "name": "update-quiz-question-group", "description": "Update a quiz question group" },
+    { "name": "delete-quiz-question-group", "description": "Delete a quiz question group" },
+    { "name": "list-eportfolios", "description": "List ePortfolios for a user" },
+    { "name": "get-eportfolio", "description": "Get ePortfolio details" },
+    { "name": "get-eportfolio-pages", "description": "List pages in an ePortfolio" }
   ],
   "prompts": [
     {
