@@ -1,6 +1,6 @@
 {
   "name": "@r-huijts/canvas-mcp",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "MCP server for Canvas LMS — courses, assignments, grading, pages, rubrics, and more",
   "author": "R.Huijts",
   "license": "MIT",
