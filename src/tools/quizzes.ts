@@ -13,7 +13,7 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     { readOnlyHint: true },
     async ({ courseId }: { courseId: string; }) => {
       try {
-        const quizzes: any[] = await canvas.get(`/api/v1/courses/${courseId}/quizzes`);
+        const quizzes: any[] = await canvas.fetchAllPages(`/api/v1/courses/${courseId}/quizzes`, { per_page: 100 });
         const formattedQuizzes = quizzes
           .map((quiz: any) => {
             return [
@@ -177,7 +177,7 @@ export function registerQuizTools(server: McpServer, canvas: CanvasClient) {
     { readOnlyHint: true },
     async ({ courseId, quizId }: { courseId: string; quizId: string; }) => {
       try {
-        const questions: any[] = await canvas.get(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions`);
+        const questions: any[] = await canvas.fetchAllPages(`/api/v1/courses/${courseId}/quizzes/${quizId}/questions`, { per_page: 100 });
         const formattedQuestions = questions
           .map((q: any) => {
             return `ID: ${q.id}, Type: ${q.question_type}, Text: ${q.question_text.substring(0, 100)}...`;

@@ -14,23 +14,15 @@ export function registerStudentTools(server: McpServer, canvas: CanvasClient) {
     },
     { readOnlyHint: true },
     async ({ courseId, includeEmail, anonymous = true }: { courseId: string; includeEmail?: boolean; anonymous?: boolean }) => {
-      const students: any[] = [];
-      let page = 1;
-      let hasMore = true;
       try {
-        while (hasMore) {
-          const params: any = {
-            enrollment_type: ['student'],
-            per_page: 100,
-            page: page,
-            include: ['email', 'avatar_url'],
-            enrollment_state: ['active', 'invited']
-          };
-          const pageStudents = (await canvas.listStudents(courseId, params, { anonymous }) as any[]);
-          students.push(...pageStudents);
-          hasMore = pageStudents.length === 100;
-          page += 1;
-        }
+        // listStudents fetches every page internally; only request email when asked for.
+        const params: any = {
+          enrollment_type: ['student'],
+          per_page: 100,
+          include: includeEmail ? ['email', 'avatar_url'] : ['avatar_url'],
+          enrollment_state: ['active', 'invited']
+        };
+        const students = (await canvas.listStudents(courseId, params, { anonymous }) as any[]);
         const formattedStudents = students
           .map(student => {
             const parts = [

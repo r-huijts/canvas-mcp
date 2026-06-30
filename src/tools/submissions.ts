@@ -181,7 +181,7 @@ export function registerSubmissionTools(server: McpServer, canvas: CanvasClient)
           content: [
             {
               type: "text",
-              text: JSON.stringify(response, null, 2)
+              text: JSON.stringify(response)
             }
           ]
         };
@@ -204,12 +204,23 @@ export function registerSubmissionTools(server: McpServer, canvas: CanvasClient)
     { readOnlyHint: true },
     async ({ fileId }: { fileId: string }) => {
       try {
-        const fileInfo = await canvas.getFileInfo(fileId);
+        const f = await canvas.getFileInfo(fileId) as any;
+        const summary = {
+          id: f.id,
+          filename: f.filename || f.display_name,
+          display_name: f.display_name,
+          content_type: f['content-type'] || f.content_type,
+          mime_class: f.mime_class,
+          size: f.size,
+          url: f.url,
+          created_at: f.created_at,
+          updated_at: f.updated_at,
+        };
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify(fileInfo, null, 2)
+              text: JSON.stringify(summary)
             }
           ]
         };
@@ -265,7 +276,7 @@ export function registerSubmissionTools(server: McpServer, canvas: CanvasClient)
           content: [
             {
               type: "text",
-              text: JSON.stringify(response, null, 2)
+              text: JSON.stringify(response)
             }
           ]
         };

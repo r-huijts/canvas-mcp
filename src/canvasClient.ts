@@ -28,8 +28,12 @@ export class CanvasClient {
   private invalidateForWrite(url: string): void {
     const basePath = url.split('?')[0];
     this.cache.invalidatePrefix(basePath);
+    // Refresh the containing collection list (e.g. updating /pages/syllabus
+    // should drop the cached /pages list), but never climb so high that a
+    // single write wipes an entire course or the API root.
     const parent = basePath.replace(/\/[^/]+$/, '');
-    if (parent !== basePath) this.cache.invalidatePrefix(parent);
+    const tooBroad = /^\/api\/v1\/courses\/\d+$/.test(parent) || /^\/api\/v1\/[^/]+$/.test(parent);
+    if (parent !== basePath && !tooBroad) this.cache.invalidatePrefix(parent);
   }
 
   // Generic GET with ETag-based conditional requests and TTL fallback
@@ -38,8 +42,9 @@ export class CanvasClient {
     const key = this.cacheKey(url, params);
     const cached = cacheable ? this.cache.get(key) : undefined;
 
-    // TTL-only hit (no ETag/Last-Modified) — return without a network call
-    if (cached && !cached.etag && !cached.lastModified) {
+    // Serve without a network call when still fresh, or when there's no
+    // validator (the TTL-only path, already bounded by the cache's expiry)
+    if (cached && (this.cache.isFresh(cached) || !(cached.etag || cached.lastModified))) {
       return cached.value as T;
     }
 
@@ -110,8 +115,18 @@ export class CanvasClient {
     return links;
   }
 
-  // Fetch all pages for paginated endpoints using Link header
+  // Fetch all pages for paginated endpoints using Link header.
+  // The assembled result is cached (TTL-based) for cacheable URLs so repeated
+  // list calls don't re-download every page.
   async fetchAllPages<T>(url: string, params: any = {}): Promise<T[]> {
+    const cacheable = this.isCacheable(url);
+    const key = this.cacheKey(url, { ...params, __all: true });
+    if (cacheable) {
+      const cached = this.cache.get(key);
+      if (cached && (this.cache.isFresh(cached) || !(cached.etag || cached.lastModified))) {
+        return cached.value as T[];
+      }
+    }
     const results: T[] = [];
     const per_page = params.per_page || 100;
     let page = 1;
@@ -124,6 +139,7 @@ export class CanvasClient {
       if (!linkHeader || !this.parseLinkHeader(linkHeader).next) break;
       page++;
     }
+    if (cacheable) this.cache.set(key, results);
     return results;
   }
 
