@@ -169,7 +169,7 @@ To submit to the official Claude Desktop Extension directory:
 
 ### Getting Help
 
-- Check the [issues page](https://github.com/your-org/canvas-mcp/issues)
+- Check the [issues page](https://github.com/r-huijts/canvas-mcp/issues)
 - Review Canvas API documentation
 - Contact support via the repository
 

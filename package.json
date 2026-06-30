@@ -1,6 +1,13 @@
 {
   "name": "@r-huijts/canvas-mcp",
   "version": "1.2.0",
+  "description": "MCP server for Canvas LMS — courses, assignments, grading, pages, rubrics, and more",
+  "author": "R.Huijts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/r-huijts/canvas-mcp"
+  },
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -22,6 +29,7 @@
   "devDependencies": {
     "@anthropic-ai/dxt": "^0.1.0",
     "@types/node": "^20.17.10",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
 }
