@@ -82,27 +82,19 @@ export function registerSectionTools(server: McpServer, canvas: CanvasClient) {
     },
     { readOnlyHint: true },
     async ({ courseId, assignmentId, sectionId, includeComments = true, anonymous = true }: { courseId: string; assignmentId: string; sectionId: string; includeComments?: boolean; anonymous?: boolean }) => {
-      let submissions: any[] = [];
-      let page = 1;
-      let hasMore = true;
       try {
         await canvas.getSection(courseId, sectionId);
 
-        while (hasMore) {
-          const params: any = {
-            per_page: 100,
-            page: page,
-            include: [
-              'user',
-              'submission_comments',
-              'assignment'
-            ]
-          };
-          const pageSubmissions = (await canvas.listSectionAssignmentSubmissions(sectionId, assignmentId, params, { anonymous }) as any[]);
-          submissions.push(...pageSubmissions);
-          hasMore = pageSubmissions.length === 100;
-          page += 1;
-        }
+        // listSectionAssignmentSubmissions paginates internally.
+        const params: any = {
+          per_page: 100,
+          include: [
+            'user',
+            'submission_comments',
+            'assignment'
+          ]
+        };
+        const submissions = (await canvas.listSectionAssignmentSubmissions(sectionId, assignmentId, params, { anonymous }) as any[]);
         const formattedSubmissions = submissions
           .map(submission => {
             const parts = [

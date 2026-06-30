@@ -18,12 +18,22 @@ export class DataAnonymizer {
 
     const anonymizedName = this.userNameMap.get(userId);
 
-    return {
+    const anonymized: any = {
       ...user,
       name: anonymizedName,
       display_name: anonymizedName,
-      email: user.email ? `student${userId}@example.com` : undefined
+      short_name: anonymizedName,
+      sortable_name: anonymizedName,
+      email: user.email ? `student${userId}@example.com` : undefined,
     };
+    // Strip fields that would re-identify an otherwise anonymized student.
+    // (user.id / user_id are kept — they're needed to grade or comment.)
+    delete anonymized.sis_user_id;
+    delete anonymized.integration_id;
+    delete anonymized.login_id;
+    delete anonymized.avatar_url;
+    delete anonymized.pronouns;
+    return anonymized;
   }
 
   /**

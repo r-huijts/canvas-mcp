@@ -304,7 +304,7 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
   // Tool: update-page-content
   server.tool(
     "update-page-content",
-    "Update or create a page with new content, replacing the entire body. If no body is provided and showStyleguidePreview is true, returns the course styleguide HTML for reference instead of writing. For targeted edits to existing content, use patch-page-content instead.",
+    "Update or create a page with new content, replacing the entire body. If no body/title/editingRoles is provided, nothing is written and guidance is returned (set showStyleguidePreview to also inline the styleguide). For targeted edits to existing content, use patch-page-content instead.",
     {
       courseId: z.string().describe("The ID of the course"),
       pageUrl: z.string().describe("The page's URL slug (e.g., 'syllabus')"),
@@ -312,44 +312,48 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
       body: z.string().optional().describe("The new HTML body for the page (optional)"),
       editingRoles: z.string().optional().describe("Comma-separated roles allowed to edit (optional)"),
       ignoreStyleguide: z.boolean().default(false).describe("Skip styleguide reference (not recommended)"),
-      showStyleguidePreview: z.boolean().default(true).describe("Show styleguide preview when creating content from scratch")
+      showStyleguidePreview: z.boolean().default(false).describe("When no body is provided, inline the full course styleguide HTML for reference (off by default to save tokens; use get-styleguide to fetch it on demand)")
     },
     { idempotentHint: true },
-    async ({ courseId, pageUrl, title, body, editingRoles, ignoreStyleguide = false, showStyleguidePreview = true }: { 
-      courseId: string; 
-      pageUrl: string; 
-      title?: string; 
-      body?: string; 
+    async ({ courseId, pageUrl, title, body, editingRoles, ignoreStyleguide = false, showStyleguidePreview = false }: {
+      courseId: string;
+      pageUrl: string;
+      title?: string;
+      body?: string;
       editingRoles?: string;
       ignoreStyleguide?: boolean;
       showStyleguidePreview?: boolean;
     }) => {
       try {
-        // If creating content from scratch and no body provided, show styleguide for reference
-        if (!body && showStyleguidePreview && !ignoreStyleguide) {
-          try {
-            const styleguide = (await canvas.getPage(courseId, DEFAULT_STYLEGUIDE_SLUG) as any);
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: [
-                    `Creating new page '${pageUrl}' in course ${courseId}`,
-                    `Title: ${title || 'Not specified'}`,
-                    '',
-                    '--- COURSE STYLEGUIDE FOR REFERENCE ---',
-                    styleguide.body || 'No styleguide content found',
-                    '--- END STYLEGUIDE ---',
-                    '',
-                    'Please create the page content following the above styleguide standards for consistency.',
-                    'Use update-page-content again with the body parameter containing your HTML content.'
-                  ].join('\n')
-                }
-              ]
-            };
-          } catch (error) {
-            // Styleguide not found, continue with normal operation
+        // Nothing to write: don't create/clear a page by accident. Return guidance
+        // instead, and only inline the full styleguide when explicitly requested.
+        if (body === undefined && title === undefined && editingRoles === undefined) {
+          let styleguideBlock = '';
+          if (showStyleguidePreview && !ignoreStyleguide) {
+            try {
+              const styleguide = (await canvas.getPage(courseId, DEFAULT_STYLEGUIDE_SLUG) as any);
+              styleguideBlock = [
+                '',
+                '--- COURSE STYLEGUIDE FOR REFERENCE ---',
+                styleguide.body || 'No styleguide content found',
+                '--- END STYLEGUIDE ---'
+              ].join('\n');
+            } catch (error) {
+              // Styleguide not found, omit it
+            }
           }
+          return {
+            content: [
+              {
+                type: "text",
+                text: [
+                  `No content provided for page '${pageUrl}' in course ${courseId}; nothing was written.`,
+                  `Call update-page-content again with a 'body' (and optionally 'title') to save content.`,
+                  `A course styleguide is available via get-styleguide for formatting reference.${styleguideBlock}`
+                ].join('\n')
+              }
+            ]
+          };
         }
 
         const wiki_page: any = {};
@@ -463,25 +467,26 @@ export function registerPageTools(server: McpServer, canvas: CanvasClient) {
       instructions: z.string().describe("Natural language instructions for what changes to make to the page content (e.g., 'Update office hours to 2-4pm on MWF', 'Add a warning about the upcoming exam', 'Fix all typos')"),
       title: z.string().optional().describe("New title for the page (optional)"),
       editingRoles: z.string().optional().describe("Comma-separated roles allowed to edit (optional)"),
-      ignoreStyleguide: z.boolean().default(false).describe("Skip styleguide reference (not recommended)")
+      includeStyleguide: z.boolean().default(false).describe("Inline the full course styleguide HTML for reference (off by default to save tokens; fetch it on demand with get-styleguide)")
     },
     { readOnlyHint: true },
-    async ({ courseId, pageUrl, instructions, title, editingRoles, ignoreStyleguide = false }: { 
-      courseId: string; 
-      pageUrl: string; 
+    async ({ courseId, pageUrl, instructions, title, editingRoles, includeStyleguide = false }: {
+      courseId: string;
+      pageUrl: string;
       instructions: string;
       title?: string;
       editingRoles?: string;
-      ignoreStyleguide?: boolean;
+      includeStyleguide?: boolean;
     }) => {
       try {
         // Fetch the current page content
         const currentPage = (await canvas.getPage(courseId, pageUrl) as any);
         const currentBody = currentPage.body || '';
 
-        // Try to fetch styleguide unless explicitly ignored
-        let styleguideContext = '';
-        if (!ignoreStyleguide) {
+        // Only inline the (large) styleguide when explicitly requested; otherwise
+        // leave a short pointer so the model can fetch it via get-styleguide if needed.
+        let styleguideContext = '\n\nIf you need the course formatting standards, call get-styleguide.';
+        if (includeStyleguide) {
           try {
             const styleguide = (await canvas.getPage(courseId, DEFAULT_STYLEGUIDE_SLUG) as any);
             styleguideContext = `
