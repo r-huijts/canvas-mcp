@@ -241,9 +241,20 @@ export function registerQuizResultTools(server: McpServer, canvas: CanvasClient)
           throw new Error(`Attempt ${attempt} not found. Available attempts: ${candidates.map(c => c.attempt).join(', ')}`);
         }
 
+        const quizSubmissionId = chosen.id;
+        const quizSubmissionAttempt = chosen.attempt;
+        if (quizSubmissionId === undefined || quizSubmissionId === null ||
+            quizSubmissionAttempt === undefined || quizSubmissionAttempt === null) {
+          throw new Error('The selected attempt is missing its quiz submission ID or attempt number, so its questions cannot be loaded safely.');
+        }
+
         const questions: any[] = await canvas.fetchAllPages(
           `/api/v1/courses/${courseId}/quizzes/${quizId}/questions`,
-          { per_page: 100 }
+          {
+            per_page: 100,
+            quiz_submission_id: quizSubmissionId,
+            quiz_submission_attempt: quizSubmissionAttempt,
+          }
         );
         const questionById = new Map<any, any>(questions.map(q => [q.id, q]));
 
