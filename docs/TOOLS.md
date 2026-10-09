@@ -205,6 +205,7 @@ Lists all modules in a course, optionally including inline items.
 - Optional parameters:
   - `includeItems`: boolean (default: false)
 - Returns module names, IDs, positions, published state, and optionally item summaries
+- Canvas does not inline items for a module with more than 100 items; such a module reports its item count and points at `list-module-items` instead
 
 ### list-module-items
 Lists all items in a specific module.
