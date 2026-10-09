@@ -40,6 +40,13 @@ export function registerModuleTools(server: McpServer, canvas: CanvasClient) {
             mod.items.forEach((item: any) => {
               lines.push(`  - [${item.type}] ${item.title || item.page_url || item.url || 'Untitled'} (ID: ${item.id})`);
             });
+          } else if (includeItems) {
+            // Canvas omits `items` for any module it deems too large to inline
+            // (more than 100 visible items) and documents that callers must
+            // then use the List Module Items API. Without this branch such a
+            // module prints no Items block at all, which reads as empty.
+            const count = typeof mod.items_count === 'number' ? ` (${mod.items_count} items)` : '';
+            lines.push(`Items: not returned inline by Canvas${count} — call list-module-items with moduleId ${mod.id} to list them`);
           }
           lines.push('---');
           return lines.join('\n');
