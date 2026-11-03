@@ -218,8 +218,20 @@ export class CanvasClient {
   async listCourses(params: any = {}) {
     return this.get('/api/v1/courses', params);
   }
+  async listAnnouncements(courseId: string, params: any = {}) {
+    return this.get(`/api/v1/courses/${courseId}/discussion_topics`, { only_announcements: true, per_page: 100, ...params });
+  }
+  async getAnnouncement(courseId: string, topicId: string) {
+    return this.get(`/api/v1/courses/${courseId}/discussion_topics/${topicId}`);
+  }
   async postAnnouncement(courseId: string, data: any) {
     return this.post(`/api/v1/courses/${courseId}/discussion_topics`, data);
+  }
+  async updateAnnouncement(courseId: string, topicId: string, data: any) {
+    return this.put(`/api/v1/courses/${courseId}/discussion_topics/${topicId}`, data);
+  }
+  async deleteAnnouncement(courseId: string, topicId: string) {
+    return this.delete(`/api/v1/courses/${courseId}/discussion_topics/${topicId}`);
   }
 
   // --- Assignments ---

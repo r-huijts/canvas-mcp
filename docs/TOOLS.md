@@ -9,12 +9,44 @@ Lists all active courses for the authenticated user.
 - No required parameters
 - Returns course names, IDs, and term information
 
+### list-announcements
+Lists all announcements in a course.
+- Required parameters:
+  - `courseId`: string
+- Optional parameters:
+  - `published`: boolean — filter by published state
+  - `per_page`: number — announcements per page (default: 100)
+- Returns title, ID, posted date, published state, and unread count
+
+### get-announcement
+Gets the full details of a single announcement, including its HTML message body.
+- Required parameters:
+  - `courseId`: string
+  - `announcementId`: string
+- Returns title, ID, posted date, author, published state, and message
+
 ### post-announcement
 Posts an announcement to a specific course.
 - Required parameters:
   - `courseId`: string
   - `title`: string
   - `message`: string
+
+### update-announcement
+Updates an existing announcement.
+- Required parameters:
+  - `courseId`: string
+  - `announcementId`: string
+- Optional parameters:
+  - `title`: string
+  - `message`: string (HTML)
+  - `published`: boolean
+
+### delete-announcement
+Deletes an announcement from a course. This action cannot be undone.
+- Required parameters:
+  - `courseId`: string
+  - `announcementId`: string
 
 ## Students
 

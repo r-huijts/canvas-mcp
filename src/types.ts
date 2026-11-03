@@ -10,6 +10,30 @@ export interface Term {
   end_at?: string;
 }
 
+export interface AnnouncementAuthor {
+  id: number;
+  display_name: string;
+  avatar_image_url?: string;
+  html_url?: string;
+}
+
+export interface Announcement {
+  id: number;
+  title: string;
+  message?: string;
+  posted_at?: string;
+  delayed_post_at?: string;
+  last_reply_at?: string;
+  discussion_subentry_count: number;
+  read_state?: string;
+  unread_count?: number;
+  published: boolean;
+  locked?: boolean;
+  author?: AnnouncementAuthor;
+  html_url?: string;
+  url?: string;
+}
+
 export interface Course {
   id: number;
   name: string;
