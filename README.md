@@ -34,7 +34,7 @@
 
 ## Features
 
-- **Courses** — list active courses, post announcements
+- **Courses** — list active courses, post announcements, list/get/update/delete announcements
 - **Assignments** — create, update, delete assignments and assignment groups; bulk date updates
 - **Submissions** — grade work, post feedback, download submission files
 - **Rubrics** — view rubrics, analyze statistics, attach rubrics to assignments
@@ -265,7 +265,7 @@ If you need full anonymization including staff, you can modify the logic in [`sr
 
 | Category | Count | Tools |
 |----------|-------|-------|
-| Courses | 2 | `list-courses`, `post-announcement` |
+| Courses | 5 | `list-courses`, `post-announcement`, `list-announcements`, `get-announcement`, `update-announcement`, `delete-announcement` |
 | Students | 1 | `list-students` |
 | Assignments | 5 | `list-assignments`, `get-assignment`, `create-assignment`, `update-assignment`, `delete-assignment` |
 | Assignment Groups | 3 | `list-assignment-groups`, `create-assignment-group`, `bulk-update-assignment-dates` |
